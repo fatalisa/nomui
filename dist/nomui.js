@@ -25,7 +25,7 @@ function _defineProperty2(obj, key, value) {
 }
 /**
  *
- *       nomui v1.1.4
+ *       nomui v1.1.10
  *       License: MIT
  *       Copyright (c) 2021-2021, Wetrial
  *
@@ -4664,7 +4664,7 @@ function _defineProperty2(obj, key, value) {
       this.setProps({
         // RadioList,CheckboxList等div组件不为 focusable 元素
         // 需设置 tabindex才有 fouces方法，进而触发校验的 Tooltip
-        attrs: { tabindex: 0 },
+        attrs: { tabindex: this.props.tabindex || 0 },
         children: [
           labelProps,
           { component: FieldContent, value: this.props.value },
@@ -4818,6 +4818,7 @@ function _defineProperty2(obj, key, value) {
     notShowLabel: false,
     rules: [],
     extra: null,
+    tabindex: null,
   };
   Object.defineProperty(Field.prototype, "fields", {
     get: function () {
@@ -9096,7 +9097,7 @@ function _defineProperty2(obj, key, value) {
       const _dragerItem = _listData.splice(oldIndex, 1)[0];
       _listData.splice(newIndex, 0, _dragerItem);
       if (this.props.sortable && this.props.sortable.onEnd) {
-        this._callHandler(this.props.sortable.onEnd);
+        this._callHandler(this.props.sortable.onEnd, { event: event });
       }
     }
     getLastDragItem() {
@@ -9582,32 +9583,40 @@ function _defineProperty2(obj, key, value) {
     _config() {
       const { text, icon, src, alt } = this.props;
       this._propStyleClasses = ["size"];
-      if (src) {
-        this.setProps({
-          classes: { "avatar-image": true },
-          children: [{ tag: "img", attrs: { src, alt } }],
-        });
-      } else if (icon) {
-        this.setProps({ children: [Component.normalizeIconProps(icon)] });
-      } else {
-        const innerText = text || "NA";
-        this.setProps({
-          children: [
-            {
-              tag: "span",
-              classes: { "nom-avatar-string": true },
-              children: innerText,
+      this.setProps({
+        classes: { "avatar-image": !!src },
+        children: [
+          src && {
+            tag: "img",
+            ref: (c) => {
+              this.imgRef = c;
             },
-          ],
-        });
-      }
+            attrs: { alt },
+          },
+          icon && {
+            component: "Icon",
+            type: icon,
+            ref: (c) => {
+              this.iconRef = c;
+            },
+          },
+          !icon && {
+            ref: (c) => {
+              this.textRef = c;
+            },
+            tag: "span",
+            classes: { "nom-avatar-string": true },
+            children: text || "NA",
+          },
+        ],
+      });
     }
     _setScale() {
       if (!this.props) {
         return;
       }
-      const { gap, src, icon } = this.props;
-      if (src || icon) {
+      const { gap, icon } = this.props;
+      if (icon) {
         return;
       }
       const childrenWidth = this.element.lastChild.offsetWidth;
@@ -9632,7 +9641,24 @@ function _defineProperty2(obj, key, value) {
         }
       }
     }
+    _loadImageAsync() {
+      const { src } = this.props;
+      return new Promise((resolve, reject) => {
+        const image = this.imgRef.element;
+        this.imgRef.element.src = src;
+        image.onload = () => {
+          this.textRef && this.textRef.hide();
+          this.iconRef && this.iconRef.hide();
+          resolve();
+        };
+        image.onerror = () => {
+          this.imgRef.hide();
+          reject();
+        };
+      });
+    }
     _rendered() {
+      this.props.src && this._loadImageAsync();
       this._setScale();
     }
   }
@@ -13318,7 +13344,6 @@ function _defineProperty2(obj, key, value) {
       const children = [];
       this._normalizeInternalOptions(options);
       this._normalizeSearchable();
-      console.log(this.props);
       this.setProps({
         selectedSingle: {
           _created() {
@@ -13579,7 +13604,6 @@ function _defineProperty2(obj, key, value) {
         return this.currentValue;
       }
       const selected = this.getSelectedOption();
-      console.log(selected);
       if (selected !== null) {
         if (Array.isArray(selected) && selected.length > 0) {
           const vals = selected.map(function (item) {
@@ -14270,17 +14294,18 @@ function _defineProperty2(obj, key, value) {
           : "23:59:59";
       this.startTime = minTime;
       this.endTime = maxTime;
-      this.props.minDate = this.props.minDate
+      this.minDateDay = this.props.minDate
         ? new Date(this.props.minDate).format("yyyy-MM-dd")
         : null;
-      this.props.maxDate = this.props.maxDate
+      this.maxDateDay = this.props.maxDate
         ? new Date(this.props.maxDate).format("yyyy-MM-dd")
         : null;
       this.showNow = true;
       if (
         (this.props.minDate &&
-          new Date().isBefore(new Date(this.props.minDate))) ||
-        (this.props.maxDate && new Date().isAfter(new Date(this.props.maxDate)))
+          new Date().isBefore(new Date(`${this.props.minDate} ${minTime}`))) ||
+        (this.props.maxDate &&
+          new Date().isAfter(new Date(`${this.props.maxDate} ${maxTime}`)))
       ) {
         this.showNow = false;
       }
@@ -14411,17 +14436,13 @@ function _defineProperty2(obj, key, value) {
                             }
                             if (
                               that.props.minDate &&
-                              new Date(date).isBefore(
-                                new Date(that.props.minDate)
-                              )
+                              new Date(date).isBefore(new Date(that.minDateDay))
                             ) {
                               isDisabled = true;
                             }
                             if (
                               that.props.maxDate &&
-                              new Date(date).isAfter(
-                                new Date(that.props.maxDate)
-                              )
+                              new Date(date).isAfter(new Date(that.maxDateDay))
                             ) {
                               isDisabled = true;
                             }
@@ -14491,7 +14512,7 @@ function _defineProperty2(obj, key, value) {
                   {
                     component: "Button",
                     size: "small",
-                    text: this.props.showTime ? "至今" : "今天",
+                    text: this.props.showTime ? "此刻" : "今天",
                     disabled: !this.showNow,
                     renderIf: this.props.showNow,
                     onClick: () => {
@@ -14514,8 +14535,8 @@ function _defineProperty2(obj, key, value) {
     _updateTimePickerStartEndTime(day) {
       this.currentDateBeforeMin = false;
       this.currentDateAfterMax = false;
-      const minDay = parseInt(new Date(this.props.minDate).format("d"), 10);
-      const maxDay = parseInt(new Date(this.props.maxDate).format("d"), 10);
+      const minDay = parseInt(new Date(this.minDateDay).format("d"), 10);
+      const maxDay = parseInt(new Date(this.maxDateDay).format("d"), 10);
       const timeProps = { startTime: "00:00:00", endTime: "23:59:59" };
       if (minDay === day) {
         timeProps.startTime = this.startTime;
@@ -14635,8 +14656,8 @@ function _defineProperty2(obj, key, value) {
       let currentDate = new Date();
       if (this.props.value !== null) {
         currentDate = Date.parseString(this.props.value, this.props.format);
-      } else if (this.props.minDate) {
-        currentDate = new Date(this.props.minDate);
+      } else if (this.minDateDay) {
+        currentDate = new Date(this.minDateDay);
       } // let currentDate =
       //   this.props.value !== null ? Date.parseString(this.props.value, this.props.format) : new Date()
       if (!currentDate) {
@@ -14647,10 +14668,9 @@ function _defineProperty2(obj, key, value) {
       this.day = currentDate.getDate(); // 注: 此处的比较 如果传入的时间格式不一致, 会有比较错误的情况
       //     因为 new Date(dateString) 并不可靠, `yyyy-MM-dd`得到的时间会是格林威治时间
       this.currentDateBeforeMin =
-        this.props.minDate &&
-        currentDate.isBefore(new Date(this.props.minDate));
+        this.minDateDay && currentDate.isBefore(new Date(this.minDateDay));
       this.currentDateAfterMax =
-        this.props.maxDate && currentDate.isAfter(new Date(this.props.maxDate));
+        this.maxDateDay && currentDate.isAfter(new Date(this.maxDateDay));
       this.dateInfo = { year: this.year, month: this.month - 1, day: this.day };
       if (this.props.value && this.props.showTime && this.timePicker) {
         this.timePicker.setValue(
@@ -15984,6 +16004,7 @@ function _defineProperty2(obj, key, value) {
     _created() {
       this.table = this.parent;
       this.table.tbody = this;
+      this.props.showEmpty = this.table.props.showEmpty;
     }
     _config() {
       const { data = [], rowDefaults, keyField } = this.table.props;
@@ -16009,7 +16030,11 @@ function _defineProperty2(obj, key, value) {
           rowDefaults
         ),
       };
-      if (this.table.props.data && !this.table.props.data.length) {
+      if (
+        this.props.showEmpty &&
+        this.table.props.data &&
+        !this.table.props.data.length
+      ) {
         props = {
           children: {
             tag: "tr",
@@ -16634,7 +16659,19 @@ function _defineProperty2(obj, key, value) {
       this.loadingInst = new Loading({ container: this.parent });
     }
     appendRow(rowProps) {
-      this.tbody.appendChild(rowProps);
+      if (!this.props.data) {
+        this.props.data = [];
+      }
+      if (!this.props.data.length) {
+        this.tbody.update({ showEmpty: false });
+      }
+      const row = this.tbody.appendChild(
+        Object.assign({}, rowProps, { index: this.props.data.length })
+      );
+      this.props.data.push(rowProps.data);
+      if (this.hasGrid) {
+        this.grid.rowsRefs[row.key] = row;
+      }
     }
     getRows() {
       return this.tbody.getChildren();
@@ -16663,6 +16700,7 @@ function _defineProperty2(obj, key, value) {
     },
     showTitle: false,
     ellipsis: false,
+    showEmpty: true,
   };
   Component.register(Table);
   var GridTableMixin = {
@@ -16712,6 +16750,7 @@ function _defineProperty2(obj, key, value) {
           rowDefaults: this.props.rowDefaults,
           treeConfig: this.grid.props.treeConfig,
           keyField: this.grid.props.keyField,
+          showEmpty: this.grid.props.showEmpty,
         },
         attrs: {
           onscroll: () => {
@@ -16905,6 +16944,7 @@ function _defineProperty2(obj, key, value) {
     }
     _rendered() {
       const that = this;
+      this._fixRightPadding();
       if (!this.grid.props.sticky) {
         return;
       }
@@ -16937,6 +16977,14 @@ function _defineProperty2(obj, key, value) {
     }
     _remove() {
       this.scrollbar && this.scrollbar._remove();
+    }
+    _fixRightPadding() {
+      setTimeout(() => {
+        const offset = this.element.offsetWidth - this.element.scrollWidth;
+        if (offset > 1) {
+          this.element.style.overflowY = "auto";
+        }
+      }, 200);
     }
     _hideScrolls() {
       const scrolls = document.getElementsByClassName("nom-scrollbar");
@@ -17760,8 +17808,8 @@ function _defineProperty2(obj, key, value) {
       const keys = this.getDataKeys();
       const data = keys.map(function (key) {
         return that.props.data.filter(function (item) {
-          return parseInt(item[that.props.keyField], 10) === parseInt(key, 10);
-        });
+          return `${item[that.props.keyField]}` === `${key}`;
+        })[0];
       });
       return data;
     }
@@ -18263,6 +18311,7 @@ function _defineProperty2(obj, key, value) {
     bordered: false,
     scrollbarWidth: 8,
     summary: null,
+    showEmpty: true,
   };
   Grid._loopSetValue = function (key, arry) {
     if (key === undefined || key.cascade === undefined) return false;
@@ -18922,6 +18971,7 @@ function _defineProperty2(obj, key, value) {
         this.props.mask &&
           !!icon &&
           this.props.text &&
+          this.props.toggle &&
           Component.normalizeIconProps({
             type: "eye",
             onClick: function () {
@@ -18935,7 +18985,7 @@ function _defineProperty2(obj, key, value) {
       });
     }
     _rendered() {
-      if (this.props.mask && !this.props.icon) {
+      if (this.props.mask && !this.props.icon && this.props.toggle) {
         this.tooltip = new nomui.Tooltip({
           trigger: this,
           children: "点击显示完整信息",
@@ -19022,6 +19072,7 @@ function _defineProperty2(obj, key, value) {
     icon: true,
     empty: null,
     showTitle: true,
+    toggle: true,
   };
   Component.register(MaskInfo);
   class MaskInfoField extends Field {
@@ -19029,7 +19080,16 @@ function _defineProperty2(obj, key, value) {
       super(Component.extendProps(MaskInfoField.defaults, props), ...mixins);
     }
     _config() {
-      const { tag, type, text, mask, icon, empty, showTitle } = this.props;
+      const {
+        tag,
+        type,
+        text,
+        mask,
+        icon,
+        empty,
+        showTitle,
+        toggle,
+      } = this.props;
       this.setProps({
         control: {
           children: {
@@ -19041,6 +19101,7 @@ function _defineProperty2(obj, key, value) {
             icon,
             empty,
             showTitle,
+            toggle,
           },
         },
       });
@@ -19053,7 +19114,7 @@ function _defineProperty2(obj, key, value) {
       return this.props.value;
     }
   }
-  MaskInfoField.defaults = { value: null };
+  MaskInfoField.defaults = { value: null, toggle: true };
   Component.register(MaskInfoField);
   class MenuItem extends Component {
     constructor(props, ...mixins) {
@@ -21026,6 +21087,12 @@ function _defineProperty2(obj, key, value) {
     }
     _config() {
       const { disabled, placeholder, animate, extraTools } = this.props;
+      if (this.props.value) {
+        this.year =
+          this.props.mode === "year"
+            ? this.props.value
+            : this.props.value.substring(0, 4);
+      }
       let extra = [];
       if (isFunction(extraTools)) {
         extra = Array.isArray(extraTools(this))
@@ -21183,7 +21250,7 @@ function _defineProperty2(obj, key, value) {
                       children: {
                         component: "List",
                         items: that.year
-                          ? that._getWeek("2010")
+                          ? that._getWeek(that.year)
                           : [
                               {
                                 component: "StaticText",
@@ -21450,8 +21517,8 @@ function _defineProperty2(obj, key, value) {
         }
       }
     }
-    resolveValue() {
-      const v = this.getValue();
+    resolveValue(value) {
+      const v = value || this.getValue();
       const year = this.props.mode === "year" ? v : v.substring(0, 4);
       const after =
         this.props.mode === "year"
@@ -21510,6 +21577,10 @@ function _defineProperty2(obj, key, value) {
           this.subPicker.selectItem(this.week);
           break;
       }
+    }
+    _setValue(value) {
+      this.resolveValue(value);
+      super._setValue(value);
     }
     updateList(noyear) {
       if (!noyear) {
@@ -22624,7 +22695,9 @@ function _defineProperty2(obj, key, value) {
                 {
                   tag: "span",
                   classes: { text: true },
-                  children: this.props.text,
+                  children: this.props[
+                    this.parent.parent.parent.parent.parent.props.fieldName.text
+                  ],
                 },
               ],
             });
@@ -22662,10 +22735,11 @@ function _defineProperty2(obj, key, value) {
       super(Component.extendProps(RadioList.defaults, props), ...mixins);
     }
     _config() {
+      const { fieldName } = this.props;
       this.setProps({
         optionDefaults: {
           key() {
-            return this.props.value;
+            return this.props[fieldName.value];
           },
         },
       });
@@ -22679,7 +22753,7 @@ function _defineProperty2(obj, key, value) {
       return this.optionList.getSelectedItem();
     }
     _getValueText(options, value) {
-      const { valueOptions } = this.props;
+      const { valueOptions, fieldName } = this.props;
       options = extend$1({ asArray: false }, valueOptions, options);
       const selected =
         value !== undefined
@@ -22687,25 +22761,30 @@ function _defineProperty2(obj, key, value) {
           : this.getSelectedOption();
       if (selected !== null) {
         if (options.asArray === true) {
-          return selected.props ? [selected.props.text] : [selected.text];
+          return selected.props
+            ? [selected.props[fieldName.text]]
+            : [selected[fieldName.text]];
         }
-        return selected.props ? selected.props.text : selected.text;
+        return selected.props
+          ? selected.props[fieldName.text]
+          : selected[fieldName.text];
       }
       return null;
     }
     _getValue(options) {
-      const { valueOptions } = this.props;
+      const { valueOptions, fieldName } = this.props;
       options = extend$1({ asArray: false }, valueOptions, options);
       const selected = this.getSelectedOption();
       if (selected !== null) {
         if (options.asArray === true) {
-          return [selected.props.value];
+          return [selected.props[fieldName.value]];
         }
-        return selected.props.value;
+        return selected.props[fieldName.value];
       }
       return null;
     }
     _setValue(value, options) {
+      const { fieldName } = this.props;
       if (options === false) {
         options = { triggerChange: false };
       } else {
@@ -22720,7 +22799,7 @@ function _defineProperty2(obj, key, value) {
           value = value[0];
         }
         this.optionList.selectItem(function () {
-          return this.props.value === value;
+          return this.props[fieldName.value] === value;
         });
       }
     }
@@ -22735,13 +22814,14 @@ function _defineProperty2(obj, key, value) {
       }
     }
     _getOptionByValue(value) {
+      const { fieldName } = this.props;
       let option = null;
       const { options } = this.props;
       if (Array.isArray(value)) {
         value = value[0];
       }
       for (let i = 0; i < options.length; i++) {
-        if (options[i].value === value) {
+        if (options[i][fieldName.value] === value) {
           option = options[i];
           break;
         }
@@ -22749,7 +22829,11 @@ function _defineProperty2(obj, key, value) {
       return option;
     }
   }
-  RadioList.defaults = { options: [], uistyle: "radio" };
+  RadioList.defaults = {
+    options: [],
+    uistyle: "radio",
+    fieldName: { text: "text", value: "value" },
+  };
   Component.register(RadioList);
   function getValidMax(value) {
     if (!isNumeric(value)) return 100;
@@ -25962,14 +26046,23 @@ function _defineProperty2(obj, key, value) {
     _config() {
       this.getOptionsMap();
       const children = this._getContentChildren();
-      this.setProps({ control: { children } });
+      this.setProps({ control: { disabled: this.props.disabled, children } });
       super._config();
+    }
+    _enable() {
+      this.control.props.disabled = false;
+    }
+    _disable() {
+      this.control.props.disabled = true;
     }
     _rendered() {
       this.popup = new TreeSelectPopup({
         trigger: this.control,
         nodeCheckable: this.props.multiple && this._getPopupNodeCheckable(),
         onShow: () => {
+          if (this.props.disabled) {
+            this.popup.hide();
+          }
           if (!this.props.multiple) {
             this.tree.update({
               nodeSelectable: this._getPopupNodeSelectable(),
@@ -25991,14 +26084,15 @@ function _defineProperty2(obj, key, value) {
           const _fieldKey = treeDataFields.key;
           const _fieldText = treeDataFields.text;
           const _parentKey = treeDataFields.parentKey;
+          const _children = treeDataFields.children;
           optionMap[item[_fieldKey]] = {
             key: item[_fieldKey],
             [_fieldKey]: item[_fieldKey],
             [_fieldText]: item[_fieldText],
             [_parentKey]: parentKey,
           };
-          if (item.children && item.children.length > 0) {
-            mapTree(item.children, item[_fieldKey]);
+          if (item[_children] && item[_children].length > 0) {
+            mapTree(item[_children], item[_fieldKey]);
           }
         });
       } // popup中的tree组件，options从其中获取
@@ -26049,6 +26143,9 @@ function _defineProperty2(obj, key, value) {
             this.clearIcon = c;
           },
           onClick: (args) => {
+            if (this.props.disabled) {
+              return;
+            }
             this._setValue(null);
             this.props.allowClear && this.clearIcon.hide();
             animate && this.popup && this.popup.animateHide();
@@ -26068,7 +26165,12 @@ function _defineProperty2(obj, key, value) {
               placeholder: null,
               filter: ({ inputValue, options }) => {
                 if (!inputValue) return options;
-                const { key, text, parentKey } = this.props.treeDataFields; // 1.先遍历一次 将结果符合搜索条件的结果(包含其祖先)放至 filteredMap中
+                const {
+                  key,
+                  text,
+                  parentKey,
+                  children,
+                } = this.props.treeDataFields; // 1.先遍历一次 将结果符合搜索条件的结果(包含其祖先)放至 filteredMap中
                 const reg = new RegExp(inputValue, "i");
                 const filteredMap = new Map();
                 ((target) =>
@@ -26100,11 +26202,11 @@ function _defineProperty2(obj, key, value) {
                       if (filterOpt.__filterNode)
                         obj.__filterNode = filterOpt.__filterNode; // 递归判断children
                       // 没有符合搜索条件的, 则直接使用原children
-                      if (opt.children) {
-                        const _children = getFileterOptions(opt.children);
-                        obj.children = _children.length
+                      if (opt[children]) {
+                        const _children = getFileterOptions(opt[children]);
+                        obj[children] = _children.length
                           ? _children
-                          : opt.children;
+                          : opt[children];
                       }
                       res.push(obj);
                     }
@@ -26704,8 +26806,8 @@ function _defineProperty2(obj, key, value) {
         if (isFunction(customTrigger)) {
           triggerButton = customTrigger();
         }
-        const triggerButtonCom = Component.extendProps(defaults, triggerButton);
-        children.push(triggerButtonCom);
+        triggerButton = Component.extendProps(defaults, triggerButton);
+        children.push(triggerButton);
       }
       if (showList) {
         if (display) {
@@ -26749,16 +26851,7 @@ function _defineProperty2(obj, key, value) {
           this.fileList[0].status === "done" &&
           !this._updateFileIcon.includes("close-circle")
         ) {
-          triggerButton.children.push({
-            component: "Icon",
-            type: "close-circle",
-            classes: { "close-circle-btn": true },
-            onClick: ({ event }) => {
-              event.stopPropagation();
-              this.handleRemove({ sender: that, file: this.fileList[0] });
-              onRemove.action({ sender: that, file: this.fileList[0] });
-            },
-          });
+          triggerButton.tooltip = "重新上传可完成覆盖。";
           this._updateFileIcon.push("close-circle");
           this._updateFileIcon.splice(this._updateFileIcon.indexOf("error"), 1);
           this.deleteIcon("loading", triggerButton);
@@ -26802,8 +26895,8 @@ function _defineProperty2(obj, key, value) {
         return false;
       }
       const { name } = file;
-      const type = name.substring(name.lastIndexOf("."));
-      if (this.acceptList.includes(type)) {
+      const type = name.substring(name.lastIndexOf(".")).toLowerCase();
+      if (this.acceptList.toLowerCase().includes(type)) {
         return true;
       }
       return false;

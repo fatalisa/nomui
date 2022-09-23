@@ -4424,7 +4424,7 @@ body {
   --nom-tooltip-color: var(--nom-color-bg-0);
   --nom-tooltip-border-radius: 6px;
   --nom-avatar-color: rgba(var(--nom-white), 1);
-  --nom-avatar-background-color: rgba(var(--nom-grey-5), 1);
+  --nom-avatar-background-color: var(--nom-color-primary-light-active);
   --nom-avatar-border-color: rgba(var(--nom-white), 1);
   --nom-avatar-border-radius: 50%;
   --nom-badge-background-color: rgba(var(--nom-white), 1);
@@ -7458,6 +7458,7 @@ table.nom-table.p-bordered {
   flex-direction: column;
 }
 .nom-grid.m-frozen-header > .nom-grid-header {
+  overflow-y: scroll;
   flex-shrink: 0;
   background-color: var(--nom-grid-header-background-color);
 }
@@ -7534,15 +7535,18 @@ table.nom-table.p-bordered {
   height: 2.29rem;
   line-height: 2.29rem;
 }
-.nom-avatar.avatar-image {
-  background: transparent;
-}
 .nom-avatar.avatar-image > img {
   border-radius: var(--nom-avatar-border-radius);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
 }
 .nom-avatar > .nom-avatar-string {
   position: absolute;
+  top: 50%;
   left: 50%;
+  margin-top: -50%;
   -webkit-transform-origin: 0 center;
   transform-origin: 0 center;
 }
@@ -9098,6 +9102,9 @@ textarea .nom-textarea {
   margin: 2px -4px;
   color: var(--nom-date-picker-header-text-color);
 }
+.nom-date-picker-popup .nom-list .nom-list-content .nom-list-item-wrapper .nom-list-item.s-disabled {
+  opacity: 0.5;
+}
 .nom-date-picker-popup .timepicker-group > .nom-col {
   width: 60px;
   max-height: 220px;
@@ -9494,28 +9501,12 @@ textarea .nom-textarea {
 .file-img {
   font-size: var(--nom-uploader-file-img-size);
 }
-.close-circle-btn {
-  position: absolute;
-  top: 0;
-  font-size: 18px;
-  background-color: #fff;
-  color: #f00;
-  cursor: pointer;
-  transform: translate(-50%, -50%);
-}
 .file-loading-img {
   position: absolute;
   top: 50%;
   left: 50%;
   font-size: var(--nom-uploader-file-img-size);
   transform: translate(-50%, -50%);
-}
-.upload-img-button {
-  position: relative;
-  display: inline-block;
-}
-.nom-field {
-  align-items: center;
 }
 .nom-badge {
   /* Structure */
@@ -9891,6 +9882,19 @@ textarea .nom-textarea {
   bottom: 0;
   background: var(--nom-input-bg);
   cursor: pointer;
+}
+.nom-tree-select.s-disabled .nom-control,
+.nom-tree-select.s-disabled:hover .nom-control,
+.nom-tree-select[readonly] .nom-control,
+.nom-tree-select[readonly]:hover .nom-control {
+  background: var(--nom-input-bg-disabled);
+  border-color: var(--nom-color-border);
+}
+.nom-tree-select.s-disabled .nom-tree-select-clear,
+.nom-tree-select.s-disabled:hover .nom-tree-select-clear,
+.nom-tree-select[readonly] .nom-tree-select-clear,
+.nom-tree-select[readonly]:hover .nom-tree-select-clear {
+  visibility: hidden;
 }
 .nom-tree-select .nom-tree-select-single {
   overflow: hidden;

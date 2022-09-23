@@ -9,7 +9,7 @@ import {
   getUUID,
   isBlobFile,
   isPromiseLike,
-  removeFile
+  removeFile,
 } from './helper'
 import Request from './request'
 
@@ -115,8 +115,8 @@ class Uploader extends Field {
       if (isFunction(customTrigger)) {
         triggerButton = customTrigger()
       }
-      const triggerButtonCom = Component.extendProps(defaults, triggerButton)
-      children.push(triggerButtonCom)
+      triggerButton = Component.extendProps(defaults, triggerButton)
+      children.push(triggerButton)
     }
     if (showList) {
       if (display) {
@@ -134,9 +134,9 @@ class Uploader extends Field {
             renderer,
             onRemove: onRemove &&
               isFunction(onRemove.action) && {
-              ...onRemove,
-              action: that.handleRemove.bind(that),
-            },
+                ...onRemove,
+                action: that.handleRemove.bind(that),
+              },
             allowUpdate,
             extraAction,
             customizeInfo,
@@ -153,21 +153,13 @@ class Uploader extends Field {
           },
         })
         this._updateFileIcon.push('loading')
-      } else if (this.fileList[0].status === 'done' && !this._updateFileIcon.includes('close-circle')) {
-        triggerButton.children.push({
-          component: 'Icon',
-          type: 'close-circle',
-          classes: {
-            'close-circle-btn': true
-          },
-          onClick: ({ event }) => {
-            event.stopPropagation()
-            this.handleRemove({ sender: that, file: this.fileList[0] })
-            onRemove.action({ sender: that, file: this.fileList[0] })
-          }
-        })
+      } else if (
+        this.fileList[0].status === 'done' &&
+        !this._updateFileIcon.includes('close-circle')
+      ) {
+        triggerButton.tooltip = '重新上传可完成覆盖。'
         this._updateFileIcon.push('close-circle')
-        this._updateFileIcon.splice(this._updateFileIcon.indexOf("error"), 1);
+        this._updateFileIcon.splice(this._updateFileIcon.indexOf('error'), 1)
         this.deleteIcon('loading', triggerButton)
       } else if (this.fileList[0].status === 'error' && !this._updateFileIcon.includes('error')) {
         this.deleteIcon('loading', triggerButton)
@@ -177,7 +169,7 @@ class Uploader extends Field {
         })
       }
       if (this.fileList[0].status !== 'uploading') {
-        this._updateFileIcon.splice(this._updateFileIcon.indexOf("loading"), 1);
+        this._updateFileIcon.splice(this._updateFileIcon.indexOf('loading'), 1)
       }
     } else {
       this.deleteIcon('close-circle', triggerButton)
@@ -192,8 +184,8 @@ class Uploader extends Field {
   }
 
   deleteIcon(name, file) {
-    this._updateFileIcon.splice(this._updateFileIcon.indexOf(name), 1);
-    const index = file.children.findIndex(element => element.type === name)
+    this._updateFileIcon.splice(this._updateFileIcon.indexOf(name), 1)
+    const index = file.children.findIndex((element) => element.type === name)
     if (index > 0) file.children.splice(index, 1)
   }
 
@@ -214,8 +206,8 @@ class Uploader extends Field {
       return false
     }
     const { name } = file
-    const type = name.substring(name.lastIndexOf('.'))
-    if (this.acceptList.includes(type)) {
+    const type = name.substring(name.lastIndexOf('.')).toLowerCase()
+    if (this.acceptList.toLowerCase().includes(type)) {
       return true
     }
     return false
@@ -434,7 +426,9 @@ class Uploader extends Field {
     } = this.props
     // removing
     file.status = 'removing'
-    this.fileList = this.fileList.map((f) => f.uuid === file.uuid ? { ...f, status: 'removing' } : f)
+    this.fileList = this.fileList.map((f) =>
+      f.uuid === file.uuid ? { ...f, status: 'removing' } : f,
+    )
     this.onChange({
       file,
       fileList: this.fileList,
@@ -521,7 +515,7 @@ Uploader.defaults = {
   extraAction: [],
   customizeInfo: null,
   actionRender: null,
-  showList: true
+  showList: true,
 }
 
 Component.register(Uploader)

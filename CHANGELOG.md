@@ -2,6 +2,63 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.10](https://github.com/nomui/nomui/compare/v1.1.9...v1.1.10) (2022-09-23)
+
+
+### Bug Fixes
+
+* **PartialDatePicker:** 部分情形getDateString方法报错 ([2940caa](https://github.com/nomui/nomui/commit/2940caa80d168e4261888fd6a9b8ce1721662b65))
+
+### [1.1.9](https://github.com/nomui/nomui/compare/v1.1.8...v1.1.9) (2022-09-16)
+
+
+### Bug Fixes
+
+* **Grid:** appendRow与getData方法问题 ([4526d25](https://github.com/nomui/nomui/commit/4526d25797f706c555ee607a47aad7da7b3d7f7c))
+* **Grid:** getData方法可能返回undefined ([fcbbee9](https://github.com/nomui/nomui/commit/fcbbee9d4da446692a8434136692f175a7457155))
+
+### [1.1.8](https://github.com/nomui/nomui/compare/v1.1.7...v1.1.8) (2022-09-02)
+
+
+### Bug Fixes
+
+* 开放List组件的sortable更多功能 ([4814dbf](https://github.com/nomui/nomui/commit/4814dbfc7b307b65ae315a1178202ff1cf6f056c))
+
+### [1.1.7](https://github.com/nomui/nomui/compare/v1.1.6...v1.1.7) (2022-08-26)
+
+
+### Features
+
+* **Field:** 支持自定义tabindex属性 ([226305e](https://github.com/nomui/nomui/commit/226305e593aa7b9086605a30ab132c82e98d6a67))
+* **MaskInfo:** 新增配置是否显示切换全文按钮 ([e422fb9](https://github.com/nomui/nomui/commit/e422fb9b23e8715a48b47c44df130f7c9b1806f4))
+* **RadioList:** 新增自定义fieldName ([e19cce3](https://github.com/nomui/nomui/commit/e19cce3992db3dde91eb3bcd07cd86d0fb00ecde))
+
+
+### Bug Fixes
+
+* **Grid:** 同时固定表头与右侧列会导致无法对齐 ([ff8c9ad](https://github.com/nomui/nomui/commit/ff8c9ad5956ca907fc3acabb0272a017e382a6c5))
+
+### [1.1.6](https://github.com/nomui/nomui/compare/v1.1.5...v1.1.6) (2022-08-12)
+
+
+### Features
+
+* **Avatar:** 图像加载失败时会改为显示icon或者text ([49575e2](https://github.com/nomui/nomui/commit/49575e27f576d5ab1a06af99c1494274369b839a))
+
+
+### Bug Fixes
+
+* **DatePicker:** minDate maxDate不支持时分秒的问题 ([aa84e34](https://github.com/nomui/nomui/commit/aa84e34f8784a0e06fd673a3b710ca3ed7e582b7))
+* **TreeSelect:** 子数组字段名不为'children'时选中异常 ([897c15b](https://github.com/nomui/nomui/commit/897c15bd00d02c3d8471d66e232bd32eae53b38f))
+
+### [1.1.5](https://github.com/nomui/nomui/compare/v1.1.4...v1.1.5) (2022-08-05)
+
+
+### Bug Fixes
+
+* **DatePicker:** 修正一个词汇bug ([57eea1d](https://github.com/nomui/nomui/commit/57eea1df6a52bf22c7c19f2f3530ee6143e8091e))
+* Uploader组件针对上传头像功能的部分修改 ([943b591](https://github.com/nomui/nomui/commit/943b59101ef1c2b55ef5e56d6fb4da5dc6534801))
+
 ### [1.1.4](https://github.com/nomui/nomui/compare/v1.1.3...v1.1.4) (2022-07-29)
 
 
