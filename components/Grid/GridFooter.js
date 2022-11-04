@@ -37,11 +37,34 @@ class GridFooter extends Component {
   }
 
   _getSummaryColumns() {
-    const { columns } = this.grid.props
-    return columns.map((col) => {
+    const { summary } = this.grid.props
+    const columns =
+      this.grid.props.summary && this.grid.props.summary.columns
+        ? this.grid.props.summary.columns
+        : this.grid.props.columns
+
+    const footColumns = [...columns]
+
+    if (
+      this.grid.props.rowCheckable &&
+      footColumns.length &&
+      footColumns.findIndex((n) => {
+        return n.isCheckerSpace
+      }) === -1
+    ) {
+      footColumns.splice(0, 1, {
+        width: 50,
+        resizable: false,
+        isCheckerSpace: true,
+      })
+    }
+
+    const ignoreCellRender = !!(summary && summary.ignoreCellRender)
+
+    return footColumns.map((col) => {
       return {
         ...col,
-        cellRender: col.cellRender ? null : col.cellRender,
+        cellRender: col.cellRender && !ignoreCellRender ? col.cellRender : null,
       }
     })
   }
@@ -54,6 +77,10 @@ class GridFooter extends Component {
       list = summary.map((i) => {
         return this._getSummaryData(i)
       })
+    } else if (summary.rows) {
+      list = summary.rows.map((i) => {
+        return this._getSummaryData(i)
+      })
     } else {
       list.push(this._getSummaryData(summary))
     }
@@ -61,10 +88,31 @@ class GridFooter extends Component {
     return list
   }
 
+  _getMappedColumns(columns) {
+    const arr = []
+    function mapColumns(data) {
+      data.forEach(function (item) {
+        if (item.children) {
+          mapColumns(item.children)
+        }
+        arr.push(item)
+      })
+    }
+    mapColumns(columns)
+
+    return arr
+  }
+
   _getSummaryData(param) {
-    const { data = [], columns, rowCheckable, rowExpandable } = this.grid.props
+    const { data = [], rowCheckable, rowExpandable } = this.grid.props
+    const columns =
+      this.grid.props.summary && this.grid.props.summary.columns
+        ? this.grid.props.summary.columns
+        : this.grid.props.columns
 
     const { method, text = '总计' } = param
+
+    const flatColumns = this._getMappedColumns(columns)
 
     let res = {}
     let textColumnIndex = 0
@@ -72,11 +120,11 @@ class GridFooter extends Component {
     rowExpandable && textColumnIndex++
 
     if (method && isFunction(method)) {
-      res = method({ columns, data })
+      res = method({ columns: flatColumns, data, text: text })
 
-      res[columns[textColumnIndex].field] = text
+      res[flatColumns[textColumnIndex].field] = text
     } else {
-      columns.forEach((col, index) => {
+      flatColumns.forEach((col, index) => {
         if (index === textColumnIndex) {
           res[col.field] = text
           return

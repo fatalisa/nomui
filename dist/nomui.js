@@ -25,7 +25,7 @@ function _defineProperty2(obj, key, value) {
 }
 /**
  *
- *       nomui v1.1.10
+ *       nomui v1.1.12
  *       License: MIT
  *       Copyright (c) 2021-2021, Wetrial
  *
@@ -4061,11 +4061,12 @@ function _defineProperty2(obj, key, value) {
         }
       }
       if (this.props.animate) {
-        this.addClass(
-          `nom-tooltip-animate-${this.element.getAttribute(
-            "tooltip-align"
-          )}-show`
-        );
+        let align = this.element.getAttribute("tooltip-align");
+        const s = align.indexOf(" ");
+        if (s !== -1) {
+          align = align.substring(0, s);
+        }
+        this.addClass(`nom-tooltip-animate-${align}-show`);
       }
     }
     _remove() {
@@ -8753,7 +8754,9 @@ function _defineProperty2(obj, key, value) {
       const item = this.getItem(param);
       item && item.select(selectOption);
       if (this.props.itemSelectable.scrollIntoView) {
-        this.scrollTo(item);
+        setTimeout(() => {
+          this.scrollTo(item);
+        }, 200);
       }
     }
     selectItems(param, selectOption) {
@@ -10144,6 +10147,12 @@ function _defineProperty2(obj, key, value) {
           badgeProps.text = this.props.badge.text;
           badgeProps.type = "tag";
         }
+        if (
+          this.props.badge.number !== undefined &&
+          (this.props.badge.number === 0 || this.props.badge.number === "0")
+        ) {
+          badgeProps.hidden = true;
+        }
         badgeProps.number = this.props.badge.number
           ? this.props.badge.number
           : null;
@@ -10582,10 +10591,11 @@ function _defineProperty2(obj, key, value) {
               classes: {
                 "nom-cascader-menu-item": true,
                 "nom-cascader-menu-item-active": item.key === currentVal,
+                "nom-cascader-menu-item-disabled": item.disabled === true,
               },
               onClick: () => {
-                // cascaderList.cascaderControl._itemSelected(item.key)
-                cascaderList._handleNoLeafClick(item.key);
+                item.disabled !== true &&
+                  cascaderList._handleNoLeafClick(item.key);
               },
               children: [
                 {
@@ -10729,7 +10739,7 @@ function _defineProperty2(obj, key, value) {
       const children = [];
       const { showArrow, placeholder, separator, valueType } = this.props;
       const { value, options, disabled } = this.props;
-      this.internalOption = JSON.parse(JSON.stringify(options)); // this.handleOptions(this.internalOption, fieldsMapping)
+      this.internalOption = JSON.parse(JSON.stringify(options));
       this._normalizeInternalOptions(options);
       this.flatItems(this.internalOption);
       this.initValue = isFunction(value) ? value() : value;
@@ -10844,7 +10854,7 @@ function _defineProperty2(obj, key, value) {
       while (recur) {
         this.selectedOption.unshift(recur);
         recur = this.items.get(recur.pid);
-      } // this.checked = checked
+      }
       this.checked = checked;
       this._hidePopup = hidePopup;
       const selectedItem = this.items.get(selectedKey);
@@ -10931,13 +10941,14 @@ function _defineProperty2(obj, key, value) {
       if (!value || !this.currentValue || !Array.isArray(value))
         return value !== this.currentValue;
       return this.currentValue.toString() !== value.toString();
-    }
+    } // handleOptions(options, fieldsMapping) {
     handleOptions(options, fieldsMapping) {
       const {
         key: keyField,
         label: labelField,
         value: valueField,
         children: childrenField,
+        disabled: disabledField,
       } = fieldsMapping;
       const key = keyField || valueField;
       if (!Array.isArray(options)) return [];
@@ -10948,6 +10959,7 @@ function _defineProperty2(obj, key, value) {
         item.value = item[valueField];
         item.key = item[key];
         item.children = item[childrenField];
+        item.disabled = item[disabledField] === true;
         if (Array.isArray(item.children) && item.children.length > 0) {
           this.handleOptions(item.children, fieldsMapping);
         }
@@ -11042,7 +11054,12 @@ function _defineProperty2(obj, key, value) {
     options: [],
     showArrow: true,
     separator: " / ",
-    fieldsMapping: { label: "label", value: "value", children: "children" },
+    fieldsMapping: {
+      label: "label",
+      value: "value",
+      children: "children",
+      disabled: "disabled",
+    },
     valueType: "cascade",
     changeOnSelect: true,
     width: 200,
@@ -11384,12 +11401,13 @@ function _defineProperty2(obj, key, value) {
       });
     }
     _getCheckbox() {
-      const { disabled: treeDisabled } = this.tree.props;
+      const { disabled: treeDisabled, nodeCheckable } = this.tree.props;
       const { disabled: nodeDisabled } = this.node.props;
       return {
         component: Checkbox,
         plain: true,
         classes: { "nom-tree-node-checkbox": true },
+        hidden: nodeCheckable && nodeCheckable.onlyleaf && !this.node.isLeaf,
         disabled: treeDisabled || nodeDisabled,
         _created: (inst) => {
           this.node.checkboxRef = inst;
@@ -11491,11 +11509,13 @@ function _defineProperty2(obj, key, value) {
         onCheckChange,
         cascadeCheckParent,
         cascadeCheckChildren,
+        onlyleaf,
       } = this.tree.props.nodeCheckable;
       if (checked === true) {
         return;
       } // 级联选中子节点 && 当前节点的选中不是因为 children 级联上来的
-      cascadeCheckChildren === true &&
+      !onlyleaf &&
+        cascadeCheckChildren === true &&
         !fromChildren &&
         Object.keys(this.subnodeRefs).forEach((key) => {
           this.subnodeRefs[key].checkChildren({
@@ -11503,7 +11523,8 @@ function _defineProperty2(obj, key, value) {
             triggerCheckChange: false,
           });
         }); // 级联选中父节点: fromChildren传值true
-      cascadeCheckParent === true &&
+      !onlyleaf &&
+        cascadeCheckParent === true &&
         this.parentNode &&
         this.parentNode.check({
           checkCheckbox: true,
@@ -11528,13 +11549,15 @@ function _defineProperty2(obj, key, value) {
         onCheckChange,
         cascadeUncheckChildren,
         cascadeUncheckParent,
+        onlyleaf,
       } = this.tree.props.nodeCheckable;
       if (checked === false) {
         return;
       }
       uncheckCheckbox &&
         this.checkboxRef.setValue(false, { triggerChange: false });
-      cascadeUncheckChildren === true &&
+      !onlyleaf &&
+        cascadeUncheckChildren === true &&
         skipChildren === false &&
         Object.keys(this.subnodeRefs).forEach((key) => {
           this.subnodeRefs[key].uncheck({
@@ -11542,7 +11565,8 @@ function _defineProperty2(obj, key, value) {
             triggerCheckChange: false,
           });
         });
-      cascadeUncheckParent === true &&
+      !onlyleaf &&
+        cascadeUncheckParent === true &&
         this.parentNode &&
         this.parentNode.checkNodes({ childKey: this.key });
       this.props.checked = false;
@@ -11705,6 +11729,15 @@ function _defineProperty2(obj, key, value) {
             nodeCheckable
           ),
         });
+        if (this.props.nodeCheckable && this.props.nodeCheckable.onlyleaf) {
+          this.setProps({
+            nodeCheckable: {
+              cascadeCheckParent: false,
+              cascadeUncheckParent: false,
+              cascade: false,
+            },
+          });
+        }
         this.checkedNodeKeysHash = {};
         if (Array.isArray(this.props.nodeCheckable.checkedNodeKeys)) {
           this.props.nodeCheckable.checkedNodeKeys.forEach((key) => {
@@ -11993,6 +12026,7 @@ function _defineProperty2(obj, key, value) {
         cascadeUncheckParent,
         cascade,
         attrs,
+        initExpandLevel,
       } = this.props;
       if (attrs && attrs.style && attrs.style.height && isChrome49()) {
         attrs.style.overflow = "auto";
@@ -12003,6 +12037,7 @@ function _defineProperty2(obj, key, value) {
           data: options,
           fit: true,
           dataFields: treeDataFields,
+          initExpandLevel,
           nodeCheckable: {
             showCheckAll,
             checkAllText,
@@ -16797,10 +16832,30 @@ function _defineProperty2(obj, key, value) {
       });
     }
     _getSummaryColumns() {
-      const { columns } = this.grid.props;
-      return columns.map((col) => {
+      const { summary } = this.grid.props;
+      const columns =
+        this.grid.props.summary && this.grid.props.summary.columns
+          ? this.grid.props.summary.columns
+          : this.grid.props.columns;
+      const footColumns = [...columns];
+      if (
+        this.grid.props.rowCheckable &&
+        footColumns.length &&
+        footColumns.findIndex((n) => {
+          return n.isCheckerSpace;
+        }) === -1
+      ) {
+        footColumns.splice(0, 1, {
+          width: 50,
+          resizable: false,
+          isCheckerSpace: true,
+        });
+      }
+      const ignoreCellRender = !!(summary && summary.ignoreCellRender);
+      return footColumns.map((col) => {
         return Object.assign({}, col, {
-          cellRender: col.cellRender ? null : col.cellRender,
+          cellRender:
+            col.cellRender && !ignoreCellRender ? col.cellRender : null,
         });
       });
     }
@@ -16811,28 +16866,45 @@ function _defineProperty2(obj, key, value) {
         list = summary.map((i) => {
           return this._getSummaryData(i);
         });
+      } else if (summary.rows) {
+        list = summary.rows.map((i) => {
+          return this._getSummaryData(i);
+        });
       } else {
         list.push(this._getSummaryData(summary));
       }
       return list;
     }
+    _getMappedColumns(columns) {
+      const arr = [];
+      function mapColumns(data) {
+        data.forEach(function (item) {
+          if (item.children) {
+            mapColumns(item.children);
+          }
+          arr.push(item);
+        });
+      }
+      mapColumns(columns);
+      return arr;
+    }
     _getSummaryData(param) {
-      const {
-        data = [],
-        columns,
-        rowCheckable,
-        rowExpandable,
-      } = this.grid.props;
+      const { data = [], rowCheckable, rowExpandable } = this.grid.props;
+      const columns =
+        this.grid.props.summary && this.grid.props.summary.columns
+          ? this.grid.props.summary.columns
+          : this.grid.props.columns;
       const { method, text = "总计" } = param;
+      const flatColumns = this._getMappedColumns(columns);
       let res = {};
       let textColumnIndex = 0;
       rowCheckable && textColumnIndex++;
       rowExpandable && textColumnIndex++;
       if (method && isFunction(method)) {
-        res = method({ columns, data });
-        res[columns[textColumnIndex].field] = text;
+        res = method({ columns: flatColumns, data, text: text });
+        res[flatColumns[textColumnIndex].field] = text;
       } else {
-        columns.forEach((col, index) => {
+        flatColumns.forEach((col, index) => {
           if (index === textColumnIndex) {
             res[col.field] = text;
             return;
@@ -16980,6 +17052,9 @@ function _defineProperty2(obj, key, value) {
     }
     _fixRightPadding() {
       setTimeout(() => {
+        if (!this.element) {
+          return;
+        }
         const offset = this.element.offsetWidth - this.element.scrollWidth;
         if (offset > 1) {
           this.element.style.overflowY = "auto";
@@ -17530,13 +17605,16 @@ function _defineProperty2(obj, key, value) {
             sortDirection: sorter.sortDirection,
           });
         }
+        if (item.children) {
+          item.children = item.children.map(this._setColumnItemDire(sorter));
+        }
         return Object.assign({}, item, { sortDirection: null });
       };
     }
     handleSort(sorter) {
       this.props.sortCacheable && this.saveSortInfo(sorter);
       const key = sorter.field;
-      if (!sorter.sortDirection) return;
+      if (!sorter.sortDirection && !this.props.forceSort) return;
       if (isFunction(sorter.sortable)) {
         let arr = [];
         if (this.lastSortField === key) {
@@ -17804,6 +17882,9 @@ function _defineProperty2(obj, key, value) {
       }
     }
     getData() {
+      if (!this.props.data || !this.props.data.length) {
+        return [];
+      }
       const that = this;
       const keys = this.getDataKeys();
       const data = keys.map(function (key) {
@@ -18280,6 +18361,7 @@ function _defineProperty2(obj, key, value) {
     frozenRightCols: null,
     allowFrozenCols: false,
     onSort: null,
+    forceSort: false,
     sortCacheable: false,
     onFilter: null,
     keyField: "id",
@@ -21461,7 +21543,7 @@ function _defineProperty2(obj, key, value) {
         this.updateList(true);
       }
       if (this.props.mode === "week") {
-        this.setValue(null);
+        this.setValue(null, { triggerChange: false });
         this.weekPicker.parent.props.hidden &&
           this.weekPicker.parent.update({ hidden: false });
         this.weekPicker.update({ items: this._getWeek(this.year) });
@@ -21500,7 +21582,11 @@ function _defineProperty2(obj, key, value) {
           break;
         }
         case "month": {
-          new_val = new Date(`${this.year}-${this.month}`).format("yyyy-MM");
+          new_val = new Date(
+            `${this.year}-${
+              nomui.utils.isNumeric(this.month) ? this.month : "01"
+            }`
+          ).format("yyyy-MM");
           this.year &&
             this.month &&
             old_val !== new_val &&
@@ -21518,7 +21604,7 @@ function _defineProperty2(obj, key, value) {
       }
     }
     resolveValue(value) {
-      const v = value || this.getValue();
+      const v = value || this.year || this.getValue();
       const year = this.props.mode === "year" ? v : v.substring(0, 4);
       const after =
         this.props.mode === "year"
@@ -21579,7 +21665,7 @@ function _defineProperty2(obj, key, value) {
       }
     }
     _setValue(value) {
-      this.resolveValue(value);
+      value && this.resolveValue(value);
       super._setValue(value);
     }
     updateList(noyear) {
@@ -21905,7 +21991,9 @@ function _defineProperty2(obj, key, value) {
             that.input.element.selectionStart = start;
             that.input.element.selectionEnd = start;
           }
-          pass ? that.rightIconRef.show() : that.rightIconRef.hide();
+          if (that.props.visibilityToggle) {
+            pass ? that.rightIconRef.show() : that.rightIconRef.hide();
+          }
           that._callHandler(onValueChange);
         },
       });
@@ -25926,6 +26014,7 @@ function _defineProperty2(obj, key, value) {
         treeDataFields,
         flatOptions,
         multiple,
+        initExpandLevel,
       } = this.selectControl.props;
       this.setProps({
         attrs: {
@@ -25980,6 +26069,7 @@ function _defineProperty2(obj, key, value) {
               multiple,
               nodeSelectable,
               nodeCheckable,
+              initExpandLevel,
               _created: function () {
                 that.selectControl.tree = this;
               },
@@ -26273,13 +26363,17 @@ function _defineProperty2(obj, key, value) {
       const { multiple, treeCheckable } = this.props;
       const { currentValue } = this;
       if (!multiple && !treeCheckable) return false; // 多选则展示复选框
-      return Component.extendProps(treeCheckable, {
-        checkedNodeKeys: currentValue,
-        onCheckChange: () => {
-          const checkedKeys = this.tree.getCheckedNodeKeys();
-          this._setValue(checkedKeys);
-        },
-      });
+      return Component.extendProps(
+        { onlyleaf: this.props.onlyleaf },
+        treeCheckable,
+        {
+          checkedNodeKeys: currentValue,
+          onCheckChange: () => {
+            const checkedKeys = this.tree.getCheckedNodeKeys();
+            this._setValue(checkedKeys);
+          },
+        }
+      );
     }
     _setValue(value, options) {
       this.tempValue = value;
@@ -26352,6 +26446,7 @@ function _defineProperty2(obj, key, value) {
     },
     onlyleaf: false,
     showArrow: true,
+    initExpandLevel: -1,
   };
   Component.register(TreeSelect);
   const DEFAULT_ACCEPT =

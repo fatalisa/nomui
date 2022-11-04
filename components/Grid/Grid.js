@@ -402,6 +402,9 @@ class Grid extends Component {
       if (item.field === sorter.field) {
         return { ...item, sortDirection: sorter.sortDirection }
       }
+      if (item.children) {
+        item.children = item.children.map(this._setColumnItemDire(sorter))
+      }
       return { ...item, sortDirection: null }
     }
   }
@@ -409,7 +412,7 @@ class Grid extends Component {
   handleSort(sorter) {
     this.props.sortCacheable && this.saveSortInfo(sorter)
     const key = sorter.field
-    if (!sorter.sortDirection) return
+    if (!sorter.sortDirection && !this.props.forceSort) return
 
     if (isFunction(sorter.sortable)) {
       let arr = []
@@ -420,6 +423,7 @@ class Grid extends Component {
       }
 
       this.setProps({ data: arr })
+
       this.setSortDirection(sorter)
 
       this.lastSortField = key
@@ -732,6 +736,9 @@ class Grid extends Component {
   }
 
   getData() {
+    if (!this.props.data || !this.props.data.length) {
+      return []
+    }
     const that = this
     const keys = this.getDataKeys()
     const data = keys.map(function (key) {
@@ -1256,6 +1263,7 @@ Grid.defaults = {
   frozenRightCols: null,
   allowFrozenCols: false,
   onSort: null,
+  forceSort: false,
   sortCacheable: false,
   onFilter: null,
   keyField: 'id',
