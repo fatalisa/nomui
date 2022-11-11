@@ -25,7 +25,7 @@ function _defineProperty2(obj, key, value) {
 }
 /**
  *
- *       nomui v1.1.12
+ *       nomui v1.1.13
  *       License: MIT
  *       Copyright (c) 2021-2021, Wetrial
  *
@@ -10982,7 +10982,7 @@ function _defineProperty2(obj, key, value) {
     }
     handleOptionSelected(value) {
       let key = null;
-      const { valueType } = this.props;
+      const { valueType, onlyleaf } = this.props;
       this.checked = false;
       const oldCheckedOption = this.selectedOption;
       this.selectedOption = [];
@@ -10990,7 +10990,11 @@ function _defineProperty2(obj, key, value) {
       if (!this.items || this.items.size === 0) return;
       if (valueType === "single") {
         for (const v of this.items.values()) {
-          if (v.leaf && v.value === value) {
+          if (onlyleaf) {
+            if (v.leaf && v.value === value) {
+              key = v.key;
+            }
+          } else if (v.value === value) {
             key = v.key;
           }
         }
@@ -11065,6 +11069,7 @@ function _defineProperty2(obj, key, value) {
     width: 200,
     height: 250,
     disabled: false,
+    onlyleaf: true,
   };
   Component.register(Cascader);
   class Checkbox extends Field {
@@ -19260,7 +19265,7 @@ function _defineProperty2(obj, key, value) {
         },
         selectable: { byClick: menuProps.itemSelectable.byClick },
         expandable: {
-          byClick: !this.isLeaf,
+          byClick: !this.isLeaf && !menuProps.compact,
           target: function () {
             return this.wrapper.submenu;
           },
@@ -20624,6 +20629,7 @@ function _defineProperty2(obj, key, value) {
               const formatterStr = isFunction(formatter)
                 ? formatter(v)
                 : numberSpinner._format(v);
+              numberSpinner.isChange = true;
               numberSpinner.setValue(formatterStr);
             },
           },
@@ -20652,6 +20658,11 @@ function _defineProperty2(obj, key, value) {
       return value;
     }
     _setValue(value) {
+      if (this.isChange) {
+        this.input && this.input.setText(value);
+        this.isChange = false;
+        return;
+      }
       const { max, min } = this._getLimit();
       if (value > max) {
         value = max;
@@ -21168,7 +21179,15 @@ function _defineProperty2(obj, key, value) {
       this.maxSub = "60";
     }
     _config() {
-      const { disabled, placeholder, animate, extraTools } = this.props;
+      const { disabled, placeholder, animate, extraTools, mode } = this.props;
+      const formatMap = {
+        quarter: "$year年 $quarter季度",
+        month: "yyyy-MM",
+        week: "$year年 $week周",
+      };
+      if (!this.props.format) {
+        this.props.format = formatMap[mode];
+      }
       if (this.props.value) {
         this.year =
           this.props.mode === "year"
@@ -21574,7 +21593,9 @@ function _defineProperty2(obj, key, value) {
           break;
         }
         case "quarter": {
-          new_val = `${this.year} ${this.quarter}季度`;
+          new_val = this.props.format
+            .replace("$year", this.year)
+            .replace("$quarter", this.quarter);
           this.year &&
             this.quarter &&
             old_val !== new_val &&
@@ -21586,7 +21607,7 @@ function _defineProperty2(obj, key, value) {
             `${this.year}-${
               nomui.utils.isNumeric(this.month) ? this.month : "01"
             }`
-          ).format("yyyy-MM");
+          ).format(this.props.format);
           this.year &&
             this.month &&
             old_val !== new_val &&
@@ -21594,7 +21615,9 @@ function _defineProperty2(obj, key, value) {
           break;
         }
         case "week": {
-          new_val = `${this.year} ${this.week}周`;
+          new_val = this.props.format
+            .replace("$year", this.year)
+            .replace("$week", this.week);
           this.year &&
             this.week &&
             old_val !== new_val &&
@@ -21604,12 +21627,10 @@ function _defineProperty2(obj, key, value) {
       }
     }
     resolveValue(value) {
-      const v = value || this.year || this.getValue();
-      const year = this.props.mode === "year" ? v : v.substring(0, 4);
-      const after =
-        this.props.mode === "year"
-          ? null
-          : Math.abs(parseInt(v.substring(4), 10));
+      const v = value || this.getValue() || this.year;
+      const strArr = v.match(/\d+/g);
+      const year = this.props.mode === "year" ? v : strArr[0];
+      const after = this.props.mode === "year" ? null : Math.abs(strArr[1]);
       this.year = year;
       switch (this.props.mode) {
         case "year":
@@ -25193,10 +25214,17 @@ function _defineProperty2(obj, key, value) {
     }
     _config() {
       this._propStyleClasses = ["size", "color"];
-      const { icon, text, type, overflowCount, removable } = this.props;
+      const {
+        icon,
+        rightIcon,
+        text,
+        type,
+        overflowCount,
+        removable,
+      } = this.props;
       const number = this.props.number === 0 ? "0" : this.props.number;
       const that = this;
-      if (icon) {
+      if (icon || rightIcon) {
         this.setProps({ classes: { "p-with-icon": true } });
       }
       if (type === "round") {
@@ -25210,6 +25238,7 @@ function _defineProperty2(obj, key, value) {
             tag: "span",
             children: number > overflowCount ? `${overflowCount}+` : number,
           },
+          Component.normalizeIconProps(rightIcon),
           removable &&
             Component.normalizeIconProps({
               type: "times",
@@ -25218,7 +25247,12 @@ function _defineProperty2(obj, key, value) {
                 "nom-tag-remove-basic": !that.props.styles,
               },
               onClick: function ({ event }) {
-                that.props.removable(that.props.key);
+                nomui.utils.isFunction(that.props.removable) &&
+                  that.props.removable(that.props.key);
+                that.props.onRemove &&
+                  that._callHandler(that.props.onRemove, {
+                    key: that.props.key,
+                  });
                 event.stopPropagation();
               },
             }),
@@ -26043,7 +26077,10 @@ function _defineProperty2(obj, key, value) {
                       if (result && result.then) {
                         return result
                           .then((value) => {
-                            this.selectControl.tree.update({ data: value }); // 更新 optionsMap
+                            this.selectControl.tree.update({
+                              initExpandLevel: newValue ? -1 : initExpandLevel, // 搜索时展开节点层级
+                              data: value,
+                            }); // 更新 optionsMap
                             this.selectControl.getOptionsMap();
                             loading && loading.remove();
                           })
@@ -26053,7 +26090,10 @@ function _defineProperty2(obj, key, value) {
                       }
                       loading && loading.remove();
                       result &&
-                        this.selectControl.tree.update({ data: result });
+                        this.selectControl.tree.update({
+                          initExpandLevel: newValue ? -1 : initExpandLevel, // 搜索时展开节点层级
+                          data: result,
+                        });
                     }, 300);
                   },
                 },

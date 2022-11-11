@@ -7,11 +7,11 @@ class Tag extends Component {
 
   _config() {
     this._propStyleClasses = ['size', 'color']
-    const { icon, text, type, overflowCount, removable } = this.props
+    const { icon, rightIcon, text, type, overflowCount, removable } = this.props
     const number = this.props.number === 0 ? '0' : this.props.number
 
     const that = this
-    if (icon) {
+    if (icon || rightIcon) {
       this.setProps({
         classes: {
           'p-with-icon': true,
@@ -32,6 +32,8 @@ class Tag extends Component {
         Component.normalizeIconProps(icon),
         { tag: 'span', children: text },
         number && { tag: 'span', children: number > overflowCount ? `${overflowCount}+` : number },
+
+        Component.normalizeIconProps(rightIcon),
         removable &&
           Component.normalizeIconProps({
             type: 'times',
@@ -40,7 +42,9 @@ class Tag extends Component {
               'nom-tag-remove-basic': !that.props.styles,
             },
             onClick: function ({ event }) {
-              that.props.removable(that.props.key)
+              nomui.utils.isFunction(that.props.removable) && that.props.removable(that.props.key)
+              that.props.onRemove && that._callHandler(that.props.onRemove, { key: that.props.key })
+
               event.stopPropagation()
             },
           }),
