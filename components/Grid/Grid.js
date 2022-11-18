@@ -9,12 +9,14 @@ import {
   STORAGE_KEY_GRID_COLUMNS,
 } from '../util/constant'
 import {
+  ascCompare,
   defaultSortableOndrop,
   isBrowerSupportSticky,
   isFunction,
   isNullish,
   isPlainObject,
   isString,
+  localeCompareString,
 } from '../util/index'
 import GridBody from './GridBody'
 import GridFooter from './GridFooter'
@@ -93,6 +95,10 @@ class Grid extends Component {
 
   _config() {
     this.nodeList = {}
+
+    if (this.props.frozenLeftCols || this.props.frozenRightCols) {
+      this.props.forceSort = true
+    }
 
     // 切换分页 data数据更新时 此两项不重置会导致check表现出错
     this.rowsRefs = {}
@@ -386,7 +392,7 @@ class Grid extends Component {
     this.originColumns = this.originColumns.map(this._setColumnItemDire(sorter))
 
     // onSort外部会触发 update, 此时无需autoScroll
-    if (!isFunction(sorter.sortable)) {
+    if (!isFunction(sorter.sortable) && !isString(sorter.sortable)) {
       this._shouldAutoScroll = false
     }
     this.setProps({ columns: c })
@@ -422,6 +428,27 @@ class Grid extends Component {
         arr = this.props.data.sort(sorter.sortable)
       }
 
+      this.setProps({ data: arr })
+
+      this.setSortDirection(sorter)
+
+      this.lastSortField = key
+      return
+    }
+
+    if (nomui.utils.isString(sorter.sortable)) {
+      let arr = []
+      if (this.lastSortField === key) {
+        arr = this.props.data.reverse()
+      } else if (sorter.sortable === 'string') {
+        arr = this.props.data.sort((a, b) => localeCompareString(b, a, sorter.field))
+      } else if (sorter.sortable === 'number') {
+        arr = this.props.data.sort((a, b) => {
+          return b[sorter.field] - a[sorter.field]
+        })
+      } else {
+        arr = this.props.data.sort((a, b) => ascCompare(b, a, sorter.field))
+      }
       this.setProps({ data: arr })
 
       this.setSortDirection(sorter)

@@ -25,7 +25,7 @@ function _defineProperty2(obj, key, value) {
 }
 /**
  *
- *       nomui v1.1.13
+ *       nomui v1.1.14
  *       License: MIT
  *       Copyright (c) 2021-2021, Wetrial
  *
@@ -168,6 +168,30 @@ function _defineProperty2(obj, key, value) {
   } // 值为 null 或 undefined
   function isNullish(val) {
     return val === null || val === undefined;
+  }
+  function localeCompareString(prev, next, field) {
+    if (!prev[field] && !next[field]) {
+      return 0;
+    }
+    if (!!prev[field] && !next[field]) {
+      return 1;
+    }
+    if (!prev[field] && !!next[field]) {
+      return -1;
+    }
+    return prev[field].localeCompare(next[field], "zh");
+  }
+  function ascCompare(prev, next, field) {
+    if (!prev[field] && !next[field]) {
+      return 0;
+    }
+    if (!!prev[field] && !next[field]) {
+      return 1;
+    }
+    if (!prev[field] && !!next[field]) {
+      return -1;
+    }
+    return `${prev[field]}`.charCodeAt() - `${next[field]}`.charCodeAt();
   }
   /**
    * Hyphenate a camelCase string.
@@ -418,6 +442,8 @@ function _defineProperty2(obj, key, value) {
     isString: isString,
     isFunction: isFunction,
     isNullish: isNullish,
+    localeCompareString: localeCompareString,
+    ascCompare: ascCompare,
     hyphenate: hyphenate,
     htmlEncode: htmlEncode,
     extend: extend$1,
@@ -10120,6 +10146,7 @@ function _defineProperty2(obj, key, value) {
         this.setProps({ classes: { "u-shape-tag": true } });
       }
       this.setProps({
+        classes: { "nom-badge-pointer": !!this.props.onClick },
         children: [
           Component.normalizeIconProps(icon),
           { tag: "span", children: text },
@@ -10762,6 +10789,9 @@ function _defineProperty2(obj, key, value) {
               valueType === "cascade"
                 ? selectedOpt.map((e) => e.label).join(separator)
                 : selectedOpt[selectedOpt.length - 1].label;
+          }
+          if (!c && cascader.props.value) {
+            c = cascader.props.value.join(separator);
           }
           this.setProps({ children: c });
         },
@@ -13165,7 +13195,16 @@ function _defineProperty2(obj, key, value) {
             selectControl.props.animate && selectControl.popup.animateHide();
             !selectControl.props.animate && selectControl.popup.hide();
           } else {
-            selectControl.selectedMultiple.appendItem(selectedOption);
+            selectControl.selectedMultiple.update({
+              items: [
+                ...selectControl.selectedMultiple.props.items,
+                {
+                  [selectControl.props.optionFields.text]: selectedOption.text,
+                  [selectControl.props.optionFields.value]:
+                    selectedOption.value,
+                },
+              ],
+            });
           }
           if (selectProps.virtual === true) {
             this.list.virtual.selectedItems.push(selectedOption);
@@ -13176,13 +13215,19 @@ function _defineProperty2(obj, key, value) {
           const { selectControl } = this.list;
           const selectProps = selectControl.props;
           if (selectProps.multiple === true) {
-            selectControl.selectedMultiple.removeItem(this.key);
+            selectControl.selectedMultiple.update({
+              items: selectControl.selectedMultiple.props.items.filter((n) => {
+                return n[selectControl.props.optionFields.value] !== this.key;
+              }),
+            });
           }
           if (selectProps.virtual === true) {
             const { selectedItems } = this.list.virtual;
             selectedItems.splice(
               selectedItems.findIndex(
-                (item) => item.value === this.props.value
+                (item) =>
+                  item[selectControl.props.optionFields.value] ===
+                  this.props[selectControl.props.optionFields.value]
               ),
               1
             );
@@ -13363,6 +13408,7 @@ function _defineProperty2(obj, key, value) {
     _created() {
       super._created();
       this.internalOptions = [];
+      this.multipleItems = [];
       if (this.props.extraOptions) {
         const extraOptions = this.props.extraOptions.map((n) => {
           return Object.assign({}, n, { isExtra: true });
@@ -13393,7 +13439,7 @@ function _defineProperty2(obj, key, value) {
         selectedMultiple: {
           itemDefaults: {
             key() {
-              return this.props.value;
+              return this.props[that.props.optionFields.value];
             },
             _config: function () {
               this.setProps({
@@ -13401,13 +13447,65 @@ function _defineProperty2(obj, key, value) {
                 onClick: (args) => {
                   args.event.stopPropagation();
                 },
+                hidden: this.props.isOverTag,
+                classes: {
+                  "nom-select-overtag-trigger": !!this.props.overList,
+                },
+                attrs: { title: this.props[that.props.optionFields.text] },
+                popup: this.props.overList
+                  ? {
+                      triggerAction: "hover",
+                      align: "top center",
+                      classes: { "nom-select-extra-tags": true },
+                      children: {
+                        component: "List",
+                        gutter: "sm",
+                        itemDefaults: {
+                          key() {
+                            return this.props[that.props.optionFields.value];
+                          },
+                          _config: function () {
+                            this.setProps({
+                              tag: "span",
+                              onClick: (args) => {
+                                args.event.stopPropagation();
+                              },
+                              attrs: {
+                                title: this.props[that.props.optionFields.text],
+                              },
+                              children: [
+                                {
+                                  tag: "span",
+                                  classes: { "nom-select-item-content": true },
+                                  attrs: {
+                                    style: {
+                                      maxWidth: `${that.props.maxTagWidth}px`,
+                                    },
+                                  },
+                                  children: this.props[
+                                    that.props.optionFields.text
+                                  ],
+                                },
+                              ],
+                            });
+                          },
+                        },
+                        items: this.props.overList,
+                      },
+                    }
+                  : null,
                 children: [
                   {
                     tag: "span",
                     classes: { "nom-select-item-content": true },
-                    children: this.props.text,
+                    attrs: {
+                      style: { maxWidth: `${that.props.maxTagWidth}px` },
+                    },
+                    children: this.props.overList
+                      ? `+${this.props.overNum}`
+                      : this.props[that.props.optionFields.text],
                   },
-                  {
+                  !this.props.overList && {
                     component: Icon,
                     type: "close",
                     classes: { "nom-select-item-remove": true },
@@ -13430,6 +13528,51 @@ function _defineProperty2(obj, key, value) {
                 ],
               });
             },
+          },
+          _config() {
+            this.setProps({
+              items: this.props.items.map((n) => {
+                n.overList = null;
+                n.overNum = null;
+                return n;
+              }),
+            });
+            if (
+              that.props.maxTagCount > 0 &&
+              this.props.items.length > that.props.maxTagCount
+            ) {
+              const before = this.props.items.slice(
+                0,
+                that.props.maxTagCount + 1
+              );
+              const after = this.props.items.slice(
+                that.props.maxTagCount + 1,
+                this.props.items.length
+              );
+              const overTags = this.props.items.slice(
+                that.props.maxTagCount,
+                this.props.items.length
+              );
+              const num = this.props.items.length - that.props.maxTagCount;
+              const newItems = [
+                ...before.map((n, i) => {
+                  n.isOverTag = false;
+                  if (i === before.length - 1) {
+                    n.overList = overTags;
+                    n.overNum = num;
+                  } else {
+                    n.overList = null;
+                    n.overNum = null;
+                  }
+                  return n;
+                }),
+                ...after.map((n) => {
+                  n.isOverTag = true;
+                  return n;
+                }),
+              ];
+              this.setProps({ items: newItems });
+            }
           },
           _created() {
             that.selectedMultiple = this;
@@ -13549,7 +13692,8 @@ function _defineProperty2(obj, key, value) {
       if (multiple === true) {
         const selValueOptions = this._getOptions(value);
         if (Array.isArray(selValueOptions) && selValueOptions.length) {
-          this.selectedMultiple.update({ items: selValueOptions });
+          this.multipleItems = selValueOptions;
+          this.selectedMultiple.update({ items: this.multipleItems });
           this.currentValue = selValueOptions.map(function (item) {
             return item.value;
           });
@@ -13607,6 +13751,7 @@ function _defineProperty2(obj, key, value) {
     }
     _getValueText(options, value) {
       const { valueOptions } = this.props;
+      const that = this;
       options = extend$1({ asArray: false }, valueOptions, options);
       if (!this.optionList) {
         value = this.currentValue;
@@ -13618,21 +13763,28 @@ function _defineProperty2(obj, key, value) {
       if (selected !== null) {
         if (Array.isArray(selected) && selected.length > 0) {
           const vals = selected.map(function (item) {
-            return item.props ? item.props.text : item.text;
+            return item.props
+              ? item.props[that.props.optionFields.text]
+              : item.text;
           });
           return vals;
         }
         if (options.asArray === true && !Array.isArray(selected)) {
-          return selected.props ? [selected.props.text] : [selected.text];
+          return selected.props
+            ? [selected.props[that.props.optionFields.text]]
+            : [selected.text];
         }
         if (!Array.isArray(selected)) {
-          return selected.props ? selected.props.text : selected.text;
+          return selected.props
+            ? selected.props[that.props.optionFields.text]
+            : selected.text;
         }
       }
       return null;
     }
     _getValue(options) {
       const { valueOptions, showSearch } = this.props;
+      const that = this;
       options = extend$1({ asArray: false }, valueOptions, options);
       if (!this.optionList || !this.optionList.props) {
         return this.currentValue;
@@ -13647,15 +13799,15 @@ function _defineProperty2(obj, key, value) {
       if (selected !== null) {
         if (Array.isArray(selected) && selected.length > 0) {
           const vals = selected.map(function (item) {
-            return item.props.value;
+            return item.props[that.props.optionFields.value];
           });
           return vals;
         }
         if (options.asArray === true && !Array.isArray(selected)) {
-          return [selected.props.value];
+          return [selected.props[that.props.optionFields.value]];
         }
         if (!Array.isArray(selected)) {
-          return selected.props.value;
+          return selected.props[that.props.optionFields.value];
         }
       }
       return null;
@@ -13845,6 +13997,8 @@ function _defineProperty2(obj, key, value) {
     extraOptions: [],
     multiple: false,
     showArrow: true,
+    maxTagWidth: 120,
+    maxTagCount: -1,
     minItemsForSearch: 20,
     filterOption: (text, options) =>
       options.filter((o) => o.text.indexOf(text) >= 0),
@@ -17346,7 +17500,10 @@ function _defineProperty2(obj, key, value) {
       this.props.rowExpandable && this._fixedCount++;
     }
     _config() {
-      this.nodeList = {}; // 切换分页 data数据更新时 此两项不重置会导致check表现出错
+      this.nodeList = {};
+      if (this.props.frozenLeftCols || this.props.frozenRightCols) {
+        this.props.forceSort = true;
+      } // 切换分页 data数据更新时 此两项不重置会导致check表现出错
       this.rowsRefs = {};
       this.checkedRowRefs = {};
       this._propStyleClasses = ["bordered"];
@@ -17594,7 +17751,7 @@ function _defineProperty2(obj, key, value) {
       this.originColumns = this.originColumns.map(
         this._setColumnItemDire(sorter)
       ); // onSort外部会触发 update, 此时无需autoScroll
-      if (!isFunction(sorter.sortable)) {
+      if (!isFunction(sorter.sortable) && !isString(sorter.sortable)) {
         this._shouldAutoScroll = false;
       }
       this.setProps({ columns: c });
@@ -17626,6 +17783,26 @@ function _defineProperty2(obj, key, value) {
           arr = this.props.data.reverse();
         } else {
           arr = this.props.data.sort(sorter.sortable);
+        }
+        this.setProps({ data: arr });
+        this.setSortDirection(sorter);
+        this.lastSortField = key;
+        return;
+      }
+      if (nomui.utils.isString(sorter.sortable)) {
+        let arr = [];
+        if (this.lastSortField === key) {
+          arr = this.props.data.reverse();
+        } else if (sorter.sortable === "string") {
+          arr = this.props.data.sort((a, b) =>
+            localeCompareString(b, a, sorter.field)
+          );
+        } else if (sorter.sortable === "number") {
+          arr = this.props.data.sort((a, b) => {
+            return b[sorter.field] - a[sorter.field];
+          });
+        } else {
+          arr = this.props.data.sort((a, b) => ascCompare(b, a, sorter.field));
         }
         this.setProps({ data: arr });
         this.setSortDirection(sorter);
@@ -18628,8 +18805,10 @@ function _defineProperty2(obj, key, value) {
     }
     _config() {
       const that = this;
-      const { groupDefaults, value, actionColumn, gridProps } = this.props;
-      const columns = [];
+      const { groupDefaults, value, gridProps } = this.props;
+      const actionRender = groupDefaults.actionRender;
+      const actionWidth = groupDefaults.actionWidth || 80;
+      let columns = [];
       groupDefaults.fields.forEach((f) => {
         if (f.hidden !== true) {
           columns.push({
@@ -18651,10 +18830,24 @@ function _defineProperty2(obj, key, value) {
           });
         }
       });
-      columns.push(
-        Component.extendProps(
+      if (isFunction(actionRender)) {
+        columns = [
+          ...columns,
           {
-            width: 80,
+            width: actionWidth,
+            cellRender: ({ row }) => {
+              return {
+                component: Toolbar,
+                items: actionRender({ row: row, grid: that }),
+              };
+            },
+          },
+        ];
+      } else if (actionRender === true || actionRender === undefined) {
+        columns = [
+          ...columns,
+          {
+            width: actionWidth,
             cellRender: ({ row }) => {
               return {
                 component: Toolbar,
@@ -18671,9 +18864,8 @@ function _defineProperty2(obj, key, value) {
               };
             },
           },
-          actionColumn
-        )
-      );
+        ];
+      }
       this.setProps({
         control: {
           children: Component.extendProps(gridProps, {
@@ -19485,7 +19677,12 @@ function _defineProperty2(obj, key, value) {
         this.menu.selectedItemKey &&
         this.menu.expandedRoot === this.rootWrapper
       ) {
-        this.submenu && this.menu.getItem(this.menu.selectedItemKey).select();
+        this.submenu &&
+          this.menu.getItem(this.menu.selectedItemKey) &&
+          this.menu.getItem(this.menu.selectedItemKey).select();
+        if (this.menu.getItem(this.menu.selectedItemKey) === null) {
+          console.warn(`Could not find the item with specific key.`);
+        }
       }
     }
   }
@@ -20592,7 +20789,7 @@ function _defineProperty2(obj, key, value) {
         otherProps,
         {
           // value: isFunction(formatter) ? formatter(value) : numberSpinner._formatter.format(value),
-          value: numberSpinner._format(value),
+          value: value === null ? null : numberSpinner._format(value),
           _created() {
             this.textbox = numberSpinner;
             this.textbox.input = this;
@@ -20639,7 +20836,7 @@ function _defineProperty2(obj, key, value) {
       this.setProps({ control: { children: [inputProps, ...spinner] } });
       super._config();
     }
-    _getValue() {
+    _getFormatValue() {
       const text = this.getText();
       if (text === "") return null;
       const { min, max } = this._getLimit();
@@ -20657,6 +20854,13 @@ function _defineProperty2(obj, key, value) {
       if (value < min) return min;
       return value;
     }
+    _getValue() {
+      const t = this.getText();
+      if (t === "") {
+        return null;
+      }
+      return t;
+    }
     _setValue(value) {
       if (this.isChange) {
         this.input && this.input.setText(value);
@@ -20669,10 +20873,13 @@ function _defineProperty2(obj, key, value) {
       } else if (value < min) {
         value = min;
       }
-      const formatValue = this._format(value);
+      const formatValue = value === null ? value : this._format(value);
       this.input && this.input.setText(formatValue);
     }
     getText() {
+      return this.input.getText();
+    }
+    getValueText() {
       return this.input.getText();
     }
     focus() {
@@ -20795,11 +21002,14 @@ function _defineProperty2(obj, key, value) {
       } else {
         step = Number(step);
       }
-      let value = this._getValue();
-      if (isNil(value)) return;
+      let value = this._getFormatValue();
+      if (isNil(value)) {
+        value = 0;
+      }
       value = Number(value);
       if (!this._formatter) this._initNumberFormat();
-      const displayValue = this._format(value + step);
+      const result = value + step;
+      const displayValue = this._format(result);
       let newValue = "";
       if (isFunction(parser)) {
         newValue = parser(displayValue);
@@ -20837,11 +21047,17 @@ function _defineProperty2(obj, key, value) {
       } else {
         step = Number(step);
       }
-      let value = this._getValue();
-      if (isNil(value)) return;
+      let value = this._getFormatValue();
+      if (isNil(value)) {
+        value = 0;
+      }
       value = Number(value);
       if (!this._formatter) this._initNumberFormat(); // currency 格式化之后不是数字了
-      const displayValue = this._format(value - step);
+      let result = value - step;
+      if (result < 0 && style !== "decimal") {
+        result = 0;
+      }
+      const displayValue = this._format(result);
       let newValue = "";
       if (isFunction(parser)) {
         newValue = parser(displayValue);
@@ -21629,6 +21845,9 @@ function _defineProperty2(obj, key, value) {
     resolveValue(value) {
       const v = value || this.getValue() || this.year;
       const strArr = v.match(/\d+/g);
+      if (!strArr) {
+        return;
+      }
       const year = this.props.mode === "year" ? v : strArr[0];
       const after = this.props.mode === "year" ? null : Math.abs(strArr[1]);
       this.year = year;
@@ -25056,8 +25275,10 @@ function _defineProperty2(obj, key, value) {
     }
     _select() {
       setTimeout(() => {
-        const tabContent = this.list.getTabContent();
-        tabContent.showPanel(this.key);
+        if (this.list.props.tabContent !== false) {
+          const tabContent = this.list.getTabContent();
+          tabContent.showPanel(this.key);
+        }
         !this.list.firstSelect && this.list.triggerChange();
         this.list.firstSelect = false;
       }, 0);
@@ -25231,6 +25452,9 @@ function _defineProperty2(obj, key, value) {
         this.setProps({ classes: { "u-shape-round": true } });
       }
       this.setProps({
+        classes: {
+          "nom-tag-pointer": !!this.props.onClick || this.props.removable,
+        },
         children: [
           Component.normalizeIconProps(icon),
           { tag: "span", children: text },

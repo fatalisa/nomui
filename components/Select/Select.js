@@ -14,6 +14,7 @@ class Select extends Field {
     super._created()
     this.internalOptions = []
 
+    this.multipleItems = []
     if (this.props.extraOptions) {
       const extraOptions = this.props.extraOptions.map((n) => {
         return { ...n, isExtra: true }
@@ -48,7 +49,7 @@ class Select extends Field {
       selectedMultiple: {
         itemDefaults: {
           key() {
-            return this.props.value
+            return this.props[that.props.optionFields.value]
           },
           _config: function () {
             this.setProps({
@@ -56,13 +57,69 @@ class Select extends Field {
               onClick: (args) => {
                 args.event.stopPropagation()
               },
+              hidden: this.props.isOverTag,
+              classes: {
+                'nom-select-overtag-trigger': !!this.props.overList,
+              },
+              attrs: { title: this.props[that.props.optionFields.text] },
+              popup: this.props.overList
+                ? {
+                    triggerAction: 'hover',
+                    align: 'top center',
+                    classes: {
+                      'nom-select-extra-tags': true,
+                    },
+                    children: {
+                      component: 'List',
+                      gutter: 'sm',
+                      itemDefaults: {
+                        key() {
+                          return this.props[that.props.optionFields.value]
+                        },
+                        _config: function () {
+                          this.setProps({
+                            tag: 'span',
+                            onClick: (args) => {
+                              args.event.stopPropagation()
+                            },
+
+                            attrs: { title: this.props[that.props.optionFields.text] },
+
+                            children: [
+                              {
+                                tag: 'span',
+                                classes: { 'nom-select-item-content': true },
+                                attrs: {
+                                  style: {
+                                    maxWidth: `${that.props.maxTagWidth}px`,
+                                  },
+                                },
+
+                                children: this.props[that.props.optionFields.text],
+                              },
+                            ],
+                          })
+                        },
+                      },
+                      items: this.props.overList,
+                    },
+                  }
+                : null,
               children: [
                 {
                   tag: 'span',
                   classes: { 'nom-select-item-content': true },
-                  children: this.props.text,
+                  attrs: {
+                    style: {
+                      maxWidth: `${that.props.maxTagWidth}px`,
+                    },
+                  },
+
+                  children: this.props.overList
+                    ? `+${this.props.overNum}`
+                    : this.props[that.props.optionFields.text],
                 },
-                {
+                !this.props.overList && {
                   component: Icon,
                   type: 'close',
                   classes: {
@@ -92,6 +149,45 @@ class Select extends Field {
               ],
             })
           },
+        },
+        _config() {
+          this.setProps({
+            items: this.props.items.map((n) => {
+              n.overList = null
+              n.overNum = null
+              return n
+            }),
+          })
+          if (that.props.maxTagCount > 0 && this.props.items.length > that.props.maxTagCount) {
+            const before = this.props.items.slice(0, that.props.maxTagCount + 1)
+            const after = this.props.items.slice(
+              that.props.maxTagCount + 1,
+              this.props.items.length,
+            )
+            const overTags = this.props.items.slice(that.props.maxTagCount, this.props.items.length)
+            const num = this.props.items.length - that.props.maxTagCount
+
+            const newItems = [
+              ...before.map((n, i) => {
+                n.isOverTag = false
+                if (i === before.length - 1) {
+                  n.overList = overTags
+                  n.overNum = num
+                } else {
+                  n.overList = null
+                  n.overNum = null
+                }
+                return n
+              }),
+              ...after.map((n) => {
+                n.isOverTag = true
+                return n
+              }),
+            ]
+            this.setProps({
+              items: newItems,
+            })
+          }
         },
         _created() {
           that.selectedMultiple = this
@@ -233,7 +329,8 @@ class Select extends Field {
       const selValueOptions = this._getOptions(value)
 
       if (Array.isArray(selValueOptions) && selValueOptions.length) {
-        this.selectedMultiple.update({ items: selValueOptions })
+        this.multipleItems = selValueOptions
+        this.selectedMultiple.update({ items: this.multipleItems })
         this.currentValue = selValueOptions.map(function (item) {
           return item.value
         })
@@ -301,6 +398,7 @@ class Select extends Field {
 
   _getValueText(options, value) {
     const { valueOptions } = this.props
+    const that = this
     options = extend(
       {
         asArray: false,
@@ -318,17 +416,17 @@ class Select extends Field {
     if (selected !== null) {
       if (Array.isArray(selected) && selected.length > 0) {
         const vals = selected.map(function (item) {
-          return item.props ? item.props.text : item.text
+          return item.props ? item.props[that.props.optionFields.text] : item.text
         })
 
         return vals
       }
       if (options.asArray === true && !Array.isArray(selected)) {
-        return selected.props ? [selected.props.text] : [selected.text]
+        return selected.props ? [selected.props[that.props.optionFields.text]] : [selected.text]
       }
 
       if (!Array.isArray(selected)) {
-        return selected.props ? selected.props.text : selected.text
+        return selected.props ? selected.props[that.props.optionFields.text] : selected.text
       }
     }
 
@@ -337,6 +435,7 @@ class Select extends Field {
 
   _getValue(options) {
     const { valueOptions, showSearch } = this.props
+    const that = this
     options = extend(
       {
         asArray: false,
@@ -360,17 +459,17 @@ class Select extends Field {
     if (selected !== null) {
       if (Array.isArray(selected) && selected.length > 0) {
         const vals = selected.map(function (item) {
-          return item.props.value
+          return item.props[that.props.optionFields.value]
         })
 
         return vals
       }
       if (options.asArray === true && !Array.isArray(selected)) {
-        return [selected.props.value]
+        return [selected.props[that.props.optionFields.value]]
       }
 
       if (!Array.isArray(selected)) {
-        return selected.props.value
+        return selected.props[that.props.optionFields.value]
       }
     }
 
@@ -583,11 +682,14 @@ Select.defaults = {
     itemSelectable: {
       scrollIntoView: true,
     },
+
     gutter: 'sm',
   },
   extraOptions: [],
   multiple: false,
   showArrow: true,
+  maxTagWidth: 120,
+  maxTagCount: -1,
   minItemsForSearch: 20,
   filterOption: (text, options) => options.filter((o) => o.text.indexOf(text) >= 0),
   virtual: false,

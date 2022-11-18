@@ -16,8 +16,11 @@ class GroupGrid extends Field {
 
   _config() {
     const that = this
-    const { groupDefaults, value, actionColumn, gridProps } = this.props
-    const columns = []
+    const { groupDefaults, value, gridProps } = this.props
+    const actionRender = groupDefaults.actionRender
+    const actionWidth = groupDefaults.actionWidth || 80
+
+    let columns = []
     groupDefaults.fields.forEach((f) => {
       if (f.hidden !== true) {
         columns.push({
@@ -41,10 +44,28 @@ class GroupGrid extends Field {
         })
       }
     })
-    columns.push(
-      Component.extendProps(
+
+    if (isFunction(actionRender)) {
+      columns = [
+        ...columns,
         {
-          width: 80,
+          width: actionWidth,
+          cellRender: ({ row }) => {
+            return {
+              component: Toolbar,
+              items: actionRender({
+                row: row,
+                grid: that,
+              }),
+            }
+          },
+        },
+      ]
+    } else if (actionRender === true || actionRender === undefined) {
+      columns = [
+        ...columns,
+        {
+          width: actionWidth,
           cellRender: ({ row }) => {
             return {
               component: Toolbar,
@@ -61,9 +82,8 @@ class GroupGrid extends Field {
             }
           },
         },
-        actionColumn,
-      ),
-    )
+      ]
+    }
 
     this.setProps({
       control: {
@@ -183,7 +203,7 @@ class GroupGrid extends Field {
     return null
   }
 
-  focus() { }
+  focus() {}
 
   addGroup() {
     const gridData = this.grid.props.data || []
@@ -196,7 +216,9 @@ class GroupGrid extends Field {
         return item
       })
     }
-    gridData.length === 0 ? this.grid.update({ data: [rowData] }) : this.grid.appendRow({ data: rowData })
+    gridData.length === 0
+      ? this.grid.update({ data: [rowData] })
+      : this.grid.appendRow({ data: rowData })
 
     this._onValueChange()
   }
