@@ -25,7 +25,7 @@ function _defineProperty2(obj, key, value) {
 }
 /**
  *
- *       nomui v1.1.14
+ *       nomui v1.1.15
  *       License: MIT
  *       Copyright (c) 2021-2021, Wetrial
  *
@@ -12067,6 +12067,7 @@ function _defineProperty2(obj, key, value) {
         attrs.style.overflow = "auto";
       }
       this.setProps({
+        classes: { "nom-checkbox-tree-with-label": !!this.props.label },
         control: {
           component: DefaultCheckboxOptionTree,
           data: options,
@@ -16046,8 +16047,9 @@ function _defineProperty2(obj, key, value) {
           console.warn(
             `Duplicate keys detected: '${_rowRefKey}'.This may cause an update error.`
           );
+        } else {
+          this.table.grid.rowsRefs[_rowRefKey] = this;
         }
-        this.table.grid.rowsRefs[_rowRefKey] = this;
       }
       if (this.table.parent.componentType === "GridFooter") {
         this.table.grid.footerTrRef = this;
@@ -17202,6 +17204,7 @@ function _defineProperty2(obj, key, value) {
         setTimeout(() => {
           if (this.scrollParent) {
             this.scrollParent.element.scrollTop += 1;
+            this.scrollParent.element.scrollTop -= 1;
           }
         }, 0);
       }
@@ -18151,6 +18154,7 @@ function _defineProperty2(obj, key, value) {
               width: 50,
               isChecker: true,
               resizable: false,
+              field: "nom-grid-row-checker",
               header: {
                 component: Checkbox,
                 plain: true,
@@ -18197,6 +18201,7 @@ function _defineProperty2(obj, key, value) {
                   _config() {
                     this.setProps(_checkboxProps);
                   },
+                  attrs: { "data-key": row.key },
                   onValueChange: (args) => {
                     if (args.newValue === true) {
                       grid.check(row);
@@ -25455,32 +25460,48 @@ function _defineProperty2(obj, key, value) {
         classes: {
           "nom-tag-pointer": !!this.props.onClick || this.props.removable,
         },
-        children: [
-          Component.normalizeIconProps(icon),
-          { tag: "span", children: text },
-          number && {
-            tag: "span",
-            children: number > overflowCount ? `${overflowCount}+` : number,
-          },
-          Component.normalizeIconProps(rightIcon),
-          removable &&
-            Component.normalizeIconProps({
-              type: "times",
-              classes: {
-                "nom-tag-remove": true,
-                "nom-tag-remove-basic": !that.props.styles,
+        children: {
+          component: "Flex",
+          align: "center",
+          cols: [
+            Component.normalizeIconProps(icon),
+            {
+              children: {
+                classes: { "nom-tag-content": true },
+                children: text,
+                attrs: {
+                  style: {
+                    maxWidth: this.props.maxWidth
+                      ? `${this.props.maxWidth}px`
+                      : null,
+                  },
+                },
               },
-              onClick: function ({ event }) {
-                nomui.utils.isFunction(that.props.removable) &&
-                  that.props.removable(that.props.key);
-                that.props.onRemove &&
-                  that._callHandler(that.props.onRemove, {
-                    key: that.props.key,
-                  });
-                event.stopPropagation();
-              },
-            }),
-        ],
+            },
+            number && {
+              tag: "span",
+              children: number > overflowCount ? `${overflowCount}+` : number,
+            },
+            Component.normalizeIconProps(rightIcon),
+            removable &&
+              Component.normalizeIconProps({
+                type: "times",
+                classes: {
+                  "nom-tag-remove": true,
+                  "nom-tag-remove-basic": !that.props.styles,
+                },
+                onClick: function ({ event }) {
+                  nomui.utils.isFunction(that.props.removable) &&
+                    that.props.removable(that.props.key);
+                  that.props.onRemove &&
+                    that._callHandler(that.props.onRemove, {
+                      key: that.props.key,
+                    });
+                  event.stopPropagation();
+                },
+              }),
+          ],
+        },
       });
     }
     _disable() {
@@ -25498,6 +25519,7 @@ function _defineProperty2(obj, key, value) {
     overflowCount: 99,
     removable: false,
     size: "sm",
+    maxWidth: null,
   };
   Component.register(Tag);
   class TimelineItem extends Component {
@@ -26576,25 +26598,35 @@ function _defineProperty2(obj, key, value) {
       }
     }
     _getContentBadges() {
-      const { treeDataFields } = this.props;
+      const { treeDataFields, maxTagCount, maxTagWidth } = this.props;
       if (!isNullish(this.currentValue) && !Array.isArray(this.currentValue)) {
         this.currentValue = [this.currentValue];
       }
       const { currentValue } = this;
       const items = [];
       const that = this;
+      let num = 0;
       if (currentValue && currentValue.length) {
-        currentValue.forEach((curValue) => {
+        num = currentValue.length - maxTagCount;
+        currentValue.forEach((curValue, idx) => {
           const curOption = this.optionMap[curValue];
           if (curOption) {
             items.push({
               component: "Tag",
               type: "square",
               size: "xs",
+              classes: {
+                "nom-tree-select-tag-hidden":
+                  maxTagCount > 0 && idx > maxTagCount,
+              },
+              attrs: { style: { cursor: "default" } },
+              maxWidth: maxTagWidth,
               text: curOption[treeDataFields.text],
               key: curOption[treeDataFields.key],
               removable:
                 that.props.multiple &&
+                maxTagCount > 0 &&
+                idx < maxTagCount &&
                 function (param) {
                   that._setValue(
                     currentValue.filter(function (k) {
@@ -26604,6 +26636,50 @@ function _defineProperty2(obj, key, value) {
                 },
             });
           }
+        });
+      }
+      if (maxTagCount > 0 && items.length > maxTagCount) {
+        const overList = items.slice(maxTagCount, items.length);
+        items[maxTagCount] = Object.assign({}, items[maxTagCount - 1], {
+          classes: { "nom-tree-select-overtag-trigger": true },
+          text: `+${num}`,
+          removable: false,
+          popup: {
+            triggerAction: "hover",
+            align: "top center",
+            classes: { "nom-tree-select-extra-tags": true },
+            children: {
+              component: "List",
+              gutter: "sm",
+              itemDefaults: {
+                key() {
+                  return this.props[that.props.treeDataFields.value];
+                },
+                _config: function () {
+                  this.setProps({
+                    tag: "span",
+                    onClick: (args) => {
+                      args.event.stopPropagation();
+                    },
+                    attrs: {
+                      title: this.props[that.props.treeDataFields.text],
+                    },
+                    children: [
+                      {
+                        tag: "span",
+                        classes: { "nom-tree-select-item-content": true },
+                        attrs: {
+                          style: { maxWidth: `${that.props.maxTagWidth}px` },
+                        },
+                        children: this.props[that.props.treeDataFields.text],
+                      },
+                    ],
+                  });
+                },
+              },
+              items: overList,
+            },
+          },
         });
       }
       return items;
@@ -26702,6 +26778,8 @@ function _defineProperty2(obj, key, value) {
     treeSelectable: {},
     multiple: false, // 复选框模式，即为多选
     treeCheckable: false,
+    maxTagWidth: 120,
+    maxTagCount: -1,
     treeDataFields: {
       key: "value",
       text: "text",
