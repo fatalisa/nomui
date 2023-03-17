@@ -25,16 +25,14 @@ class Select extends Field {
 
   _config() {
     const that = this
-    const {
-      multiple,
-      showArrow,
-      placeholder,
-      disabled,
-      showSearch,
-      allowClear,
-      options,
-    } = this.props
+    const { multiple, showArrow, disabled, showSearch, allowClear, options } = this.props
     const children = []
+    const placeholder = this.props.placeholder
+
+    // if (!placeholder && (!Array.isArray(options) || !options.length)) {
+    //   this.props.value = ''
+    //   placeholder = '暂无数据'
+    // }
 
     this._normalizeInternalOptions(options)
 
@@ -272,9 +270,6 @@ class Select extends Field {
 
     this.setProps({
       control: {
-        attrs: {
-          style: { cursor: 'text' },
-        },
         disabled: disabled,
         children: children,
       },

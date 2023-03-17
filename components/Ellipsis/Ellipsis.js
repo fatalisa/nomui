@@ -11,6 +11,7 @@ class Ellipsis extends Component {
       children: {
         classes: {
           'nom-ellipsis-inner': true,
+          'nom-ellipsis-nowrap': this.props.line === null || this.props.line === 1,
         },
         attrs: {
           title:
@@ -19,6 +20,7 @@ class Ellipsis extends Component {
               : null,
           style: {
             '-webkit-line-clamp': this.props.line,
+            display: this.props.line > 1 ? '-webkit-box' : '',
           },
         },
         children: this.props.text ? this.props.text : this.props.children,

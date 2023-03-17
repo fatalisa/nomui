@@ -864,6 +864,9 @@ class Grid extends Component {
             isChecker: true,
             resizable: false,
             field: 'nom-grid-row-checker',
+            classes: {
+              'nom-grid-checkbox': true,
+            },
             header: {
               component: Checkbox,
               plain: true,
@@ -903,6 +906,9 @@ class Grid extends Component {
 
               return {
                 component: Checkbox,
+                classes: {
+                  'nom-grid-checkbox': true,
+                },
                 plain: true,
                 _created: (inst) => {
                   row._checkboxRef = inst
@@ -1298,6 +1304,8 @@ Grid.defaults = {
   forceSort: false,
   sortCacheable: false,
   onFilter: null,
+  rowSelectable: false,
+  rowCheckable: false,
   keyField: 'id',
   treeConfig: {
     flatData: false, // 数据源是否为一维数组
@@ -1332,6 +1340,7 @@ Grid.defaults = {
   scrollbarWidth: 8,
   summary: null,
   showEmpty: true,
+  columnAlign: 'left',
 }
 Grid._loopSetValue = function (key, arry) {
   if (key === undefined || key.cascade === undefined) return false

@@ -25,7 +25,7 @@ function _defineProperty2(obj, key, value) {
 }
 /**
  *
- *       nomui v1.1.15
+ *       nomui v1.1.20
  *       License: MIT
  *       Copyright (c) 2021-2021, Wetrial
  *
@@ -3490,7 +3490,16 @@ function _defineProperty2(obj, key, value) {
       const pathArr = this.path.split("!");
       this.maxLevel = pathArr.length - 1;
       pathArr.forEach(function (path, index) {
-        that.paths[index] = path;
+        let pathName = path;
+        let pathQuery = null; // 如果path包含--则解析为路由参数
+        if (path.includes("--")) {
+          const arr = path.split("--");
+          pathName = arr[0];
+          pathQuery = arr[1];
+          that.queryStr += `&${pathName}=${pathQuery}`;
+          that.query[pathName] = pathQuery;
+        }
+        that.paths[index] = pathName;
       });
     }
     push(route) {
@@ -3804,6 +3813,11 @@ function _defineProperty2(obj, key, value) {
       this.relativeElements = [];
       this._onDocumentMousedown = this._onDocumentMousedown.bind(this);
       this._onWindowResize = this._onWindowResize.bind(this);
+      this.attachTo = this.props.attachTo;
+      this.attachTo &&
+        this.attachTo.on("remove", () => {
+          this.remove();
+        });
     }
     _config() {
       if (this.props.placement === "replace") {
@@ -10764,7 +10778,13 @@ function _defineProperty2(obj, key, value) {
     _config() {
       const cascader = this;
       const children = [];
-      const { showArrow, placeholder, separator, valueType } = this.props;
+      const {
+        showArrow,
+        placeholder,
+        separator,
+        valueType,
+        allowClear,
+      } = this.props;
       const { value, options, disabled } = this.props;
       this.internalOption = JSON.parse(JSON.stringify(options));
       this._normalizeInternalOptions(options);
@@ -10791,7 +10811,9 @@ function _defineProperty2(obj, key, value) {
                 : selectedOpt[selectedOpt.length - 1].label;
           }
           if (!c && cascader.props.value) {
-            c = cascader.props.value.join(separator);
+            c = nomui.utils.isString(cascader.props.value)
+              ? cascader.props.value
+              : cascader.props.value.join(separator);
           }
           this.setProps({ children: c });
         },
@@ -10815,26 +10837,28 @@ function _defineProperty2(obj, key, value) {
           },
         });
       }
-      children.push({
-        component: Icon,
-        type: "close",
-        classes: { "nom-cascader-icon": true },
-        hidden: true,
-        _created() {
-          cascader.close = this;
-        },
-        onClick: ({ event }) => {
-          event.stopPropagation();
-          cascader.setValue(null); // if (this.selectedOption.length === 0) return
-          // this.selectedOption = []
-          // this.checked = true
-          // this.content.element.innerText = ''
-          // this.popup.update({
-          //   popMenu: this.getSelectedMenu(),
-          // })
-          // this._onValueChange()
-        },
-      });
+      if (allowClear) {
+        children.push({
+          component: Icon,
+          type: "close",
+          classes: { "nom-cascader-icon": true },
+          hidden: true,
+          _created() {
+            cascader.close = this;
+          },
+          onClick: ({ event }) => {
+            event.stopPropagation();
+            cascader.setValue(null); // if (this.selectedOption.length === 0) return
+            // this.selectedOption = []
+            // this.checked = true
+            // this.content.element.innerText = ''
+            // this.popup.update({
+            //   popMenu: this.getSelectedMenu(),
+            // })
+            // this._onValueChange()
+          },
+        });
+      }
       this.setProps({
         control: { children, disabled },
         attrs: {
@@ -11100,6 +11124,7 @@ function _defineProperty2(obj, key, value) {
     height: 250,
     disabled: false,
     onlyleaf: true,
+    allowClear: true,
   };
   Component.register(Cascader);
   class Checkbox extends Field {
@@ -11936,15 +11961,27 @@ function _defineProperty2(obj, key, value) {
         });
       }
     }
-    checkAllNodes() {
+    checkAllNodes(options) {
       Object.keys(this.nodeRefs).forEach((nodeKey) => {
-        this.nodeRefs[nodeKey].check({ triggerCheckChange: false });
+        if (options && options.ignoreDisabled === true) {
+          if (this.nodeRefs[nodeKey].props.disabled !== true) {
+            this.nodeRefs[nodeKey].check({ triggerCheckChange: false });
+          }
+        } else {
+          this.nodeRefs[nodeKey].check({ triggerCheckChange: false });
+        }
       });
       this._onCheckChange();
     }
-    uncheckAllNodes() {
+    uncheckAllNodes(options) {
       Object.keys(this.nodeRefs).forEach((nodeKey) => {
-        this.nodeRefs[nodeKey].uncheck({ triggerCheckChange: false });
+        if (options && options.ignoreDisabled === true) {
+          if (this.nodeRefs[nodeKey].props.disabled !== true) {
+            this.nodeRefs[nodeKey].uncheck({ triggerCheckChange: false });
+          }
+        } else {
+          this.nodeRefs[nodeKey].uncheck({ triggerCheckChange: false });
+        }
       });
       this._onCheckChange();
     }
@@ -13422,13 +13459,16 @@ function _defineProperty2(obj, key, value) {
       const {
         multiple,
         showArrow,
-        placeholder,
         disabled,
         showSearch,
         allowClear,
         options,
       } = this.props;
       const children = [];
+      const placeholder = this.props.placeholder; // if (!placeholder && (!Array.isArray(options) || !options.length)) {
+      //   this.props.value = ''
+      //   placeholder = '暂无数据'
+      // }
       this._normalizeInternalOptions(options);
       this._normalizeSearchable();
       this.setProps({
@@ -13650,11 +13690,7 @@ function _defineProperty2(obj, key, value) {
         });
       }
       this.setProps({
-        control: {
-          attrs: { style: { cursor: "text" } },
-          disabled: disabled,
-          children: children,
-        },
+        control: { disabled: disabled, children: children },
         onClick: () => {
           showSearch && this.selectedSingle.element.focus();
         },
@@ -15629,14 +15665,21 @@ function _defineProperty2(obj, key, value) {
     _config() {
       this.setProps({
         children: {
-          classes: { "nom-ellipsis-inner": true },
+          classes: {
+            "nom-ellipsis-inner": true,
+            "nom-ellipsis-nowrap":
+              this.props.line === null || this.props.line === 1,
+          },
           attrs: {
             title:
               this.props.showTitle &&
               (isString(this.props.text) || isNumeric(this.props.text))
                 ? this.props.text
                 : null,
-            style: { "-webkit-line-clamp": this.props.line },
+            style: {
+              "-webkit-line-clamp": this.props.line,
+              display: this.props.line > 1 ? "-webkit-box" : "",
+            },
           },
           children: this.props.text ? this.props.text : this.props.children,
         },
@@ -15814,11 +15857,15 @@ function _defineProperty2(obj, key, value) {
           this.table.props.showTitle) &&
           this.props.column.showTitle !== false) ||
         this.props.column.showTitle === true;
+      const columnAlign = this.table.hasGrid
+        ? this.table.grid.props.columnAlign
+        : "left";
       this.setProps({
         children: children,
         attrs: {
           colspan: colSpan,
           rowspan: rowSpan,
+          align: this.props.column.align || columnAlign,
           "data-field": this.props.column.field,
           title: this._getAttrTitle(children, isEllipsis, showTitle),
         },
@@ -16323,6 +16370,9 @@ function _defineProperty2(obj, key, value) {
       this.filterValue = this.table.hasGrid
         ? this.table.grid.filter[this.props.column.field]
         : null;
+      const columnAlign = this.table.hasGrid
+        ? this.table.grid.props.columnAlign
+        : "left";
       let sortIcon = "sort";
       if (this.props.column.sortDirection === "asc") {
         sortIcon = "sort-up";
@@ -16334,13 +16384,13 @@ function _defineProperty2(obj, key, value) {
         (this.table.props.ellipsis === "both" ||
           this.table.props.ellipsis === "header") &&
         this.props.column.ellipsis !== false;
+      let titleStr = this.props.column.header || this.props.column.title;
+      if (!isString(titleStr)) {
+        titleStr = null;
+      }
       const headerProps = {
         tag: "span",
-        attrs: {
-          title: isEllipsis
-            ? this.props.column.header || this.props.column.title
-            : null,
-        },
+        attrs: { title: isEllipsis ? titleStr : null },
         classes: { "nom-table-cell-title": true },
         children: this.props.column.header || this.props.column.title,
       };
@@ -16495,10 +16545,12 @@ function _defineProperty2(obj, key, value) {
             this.props.column.filter && this.props.column.colSpan > 0
           ),
           "nom-table-ellipsis": isEllipsis,
+          "nom-table-checker-column": !!this.props.column.isChecker,
         },
         attrs: {
           colspan: this.props.column.colSpan,
           rowspan: this.props.column.rowSpan,
+          align: this.props.column.align || columnAlign,
           onmouseenter:
             this.table.grid &&
             function () {
@@ -16878,6 +16930,13 @@ function _defineProperty2(obj, key, value) {
       }
       this.activeTr = tr;
       this.activeTr.element.classList.add("nom-tr-selected");
+      this.hasGrid &&
+        this.grid.props.rowSelectable &&
+        this.grid.props.rowSelectable.onSelect &&
+        this.grid._callHandler(this.grid.props.rowSelectable.onSelect, {
+          row: tr,
+          rowData: tr.props.data,
+        });
     }
   }
   Table.defaults = {
@@ -17361,7 +17420,13 @@ function _defineProperty2(obj, key, value) {
                     text: "确定",
                     onClick: function () {
                       const list = that.tree.getCheckedNodesData();
-                      if (list.length === 0) {
+                      const lockedList = list.filter((n) => {
+                        return n.disabled === true;
+                      });
+                      if (
+                        list.length === 0 ||
+                        (list.length === lockedList.length && list.length === 1)
+                      ) {
                         new nomui.Alert({
                           type: "info",
                           title: "提示",
@@ -17412,6 +17477,7 @@ function _defineProperty2(obj, key, value) {
         data.forEach(function (item) {
           if (item.isChecker === true || item.customizable === false) {
             item.hidden = true;
+            item.disabled = true;
           }
           if (item.children) {
             mapColumns(item.children);
@@ -17423,17 +17489,17 @@ function _defineProperty2(obj, key, value) {
     } // 将customizable: false的列排至后面
     _sortCustomizableColumns(arr) {
       arr.sort((curr, next) => {
-        if (next.customizable === false) return -1;
+        if (next.customizable === false && next.field !== "checkbox") return -1;
         return 0;
       });
       return arr;
     }
     _toogleCheckall() {
       if (this.checkallBtn.props.text === "全选") {
-        this.tree.checkAllNodes();
+        this.tree.checkAllNodes({ ignoreDisabled: true });
         this.checkallBtn.update({ text: "取消全选" });
       } else {
-        this.tree.uncheckAllNodes();
+        this.tree.uncheckAllNodes({ ignoreDisabled: true });
         this.checkallBtn.update({ text: "全选" });
       }
     }
@@ -18155,6 +18221,7 @@ function _defineProperty2(obj, key, value) {
               isChecker: true,
               resizable: false,
               field: "nom-grid-row-checker",
+              classes: { "nom-grid-checkbox": true },
               header: {
                 component: Checkbox,
                 plain: true,
@@ -18194,6 +18261,7 @@ function _defineProperty2(obj, key, value) {
                 }
                 return {
                   component: Checkbox,
+                  classes: { "nom-grid-checkbox": true },
                   plain: true,
                   _created: (inst) => {
                     row._checkboxRef = inst;
@@ -18551,6 +18619,8 @@ function _defineProperty2(obj, key, value) {
     forceSort: false,
     sortCacheable: false,
     onFilter: null,
+    rowSelectable: false,
+    rowCheckable: false,
     keyField: "id",
     treeConfig: {
       flatData: false, // 数据源是否为一维数组
@@ -18581,6 +18651,7 @@ function _defineProperty2(obj, key, value) {
     scrollbarWidth: 8,
     summary: null,
     showEmpty: true,
+    columnAlign: "left",
   };
   Grid._loopSetValue = function (key, arry) {
     if (key === undefined || key.cascade === undefined) return false;
@@ -18596,10 +18667,19 @@ function _defineProperty2(obj, key, value) {
       super(Component.extendProps(Toolbar.defaults, props), ...mixins);
     }
     _config() {
-      const { items, type, gutter, size, visibleItems, inline } = this.props;
+      const {
+        items,
+        type,
+        gutter,
+        size,
+        visibleItems,
+        inline,
+        itemDefaults,
+      } = this.props;
       const before = items.slice(0, visibleItems).map((item) => {
         return Object.assign(
-          { component: "Button", type: type, size: size, inline },
+          { component: "Button", type, size, inline },
+          itemDefaults,
           item
         );
       });
@@ -18607,9 +18687,9 @@ function _defineProperty2(obj, key, value) {
         component: "Dropdown",
         rightIcon: "ellipsis",
         items: items.slice(visibleItems),
-        type: type,
+        type,
         inline,
-        size: size,
+        size,
       };
       this.setProps({
         children: {
@@ -18626,6 +18706,7 @@ function _defineProperty2(obj, key, value) {
     gutter: "sm",
     size: null,
     items: [],
+    itemDefaults: {},
   };
   Component.register(Toolbar);
   let nameSeq = 0;
@@ -18637,7 +18718,8 @@ function _defineProperty2(obj, key, value) {
     _created() {
       super._created();
       this.fields = [];
-      const { name, value } = this.props;
+      const { name, value, data } = this.props;
+      this.currentData = data;
       this.initValue = value !== undefined ? clone$1(this.props.value) : null;
       this.oldValue = null;
       this.currentValue = this.initValue;
@@ -18653,11 +18735,11 @@ function _defineProperty2(obj, key, value) {
       this.rules = [];
     }
     getValue(options) {
-      const { valueOptions } = this.props;
+      const { valueOptions, hiddenColumns } = this.props;
       options = extend$1(
         { ignoreDisabled: true, ignoreHidden: true, merge: false },
-        valueOptions,
-        options
+        options,
+        valueOptions
       );
       const value = {};
       const len = this.fields.length;
@@ -18672,12 +18754,22 @@ function _defineProperty2(obj, key, value) {
           }
         }
       }
+      hiddenColumns.forEach((element) => {
+        if (!options.ignoreHidden) {
+          if (this.currentData.hasOwnProperty(element.field)) {
+            value[element.field] = this.currentData[element.field];
+          } else if (element.value) {
+            value[element.field] = element.value;
+          }
+        }
+      });
       if (options.merge === true) {
         return extend$1(this.currentValue, value);
       }
       return value;
     }
     setValue(value, options) {
+      this.currentData = value;
       options = extend$1(
         { ignoreDisabled: false, ignoreHidden: false },
         options
@@ -18814,6 +18906,7 @@ function _defineProperty2(obj, key, value) {
       const actionRender = groupDefaults.actionRender;
       const actionWidth = groupDefaults.actionWidth || 80;
       let columns = [];
+      this.hiddenColumns = [];
       groupDefaults.fields.forEach((f) => {
         if (f.hidden !== true) {
           columns.push({
@@ -18832,6 +18925,13 @@ function _defineProperty2(obj, key, value) {
                 },
               });
             },
+          });
+        } else {
+          this.hiddenColumns.push({
+            field: f.name,
+            title: f.label,
+            width: f.width,
+            value: f.value,
           });
         }
       });
@@ -18878,7 +18978,10 @@ function _defineProperty2(obj, key, value) {
             columns: columns,
             data: value,
             line: "both",
-            rowDefaults: { component: GroupGridTr },
+            rowDefaults: {
+              component: GroupGridTr,
+              hiddenColumns: this.hiddenColumns,
+            },
             onCreated: ({ inst }) => {
               that.grid = inst;
               inst.groupGrid = that;
@@ -18904,9 +19007,9 @@ function _defineProperty2(obj, key, value) {
     getValue(options) {
       const { valueOptions } = this.props;
       const opts = extend$1(
-        { ignoreDisabled: true, ignoreHidden: true, merge: false },
-        valueOptions,
-        options
+        { ignoreDisabled: false, ignoreHidden: true, merge: false },
+        options,
+        valueOptions
       );
       const value = [];
       for (let i = 0; i < this.fields.length; i++) {
@@ -19462,13 +19565,14 @@ function _defineProperty2(obj, key, value) {
         },
         selectable: { byClick: menuProps.itemSelectable.byClick },
         expandable: {
-          byClick: !this.isLeaf && !menuProps.compact,
+          byClick: !menuProps.compact,
           target: function () {
             return this.wrapper.submenu;
           },
         },
         attrs: {
           href: this.getItemUrl(this.props.url),
+          target: this.props.target,
           style: {
             paddingLeft:
               menuProps.direction === "vertical" && !menuProps.compact
@@ -19481,7 +19585,7 @@ function _defineProperty2(obj, key, value) {
           menu.selectedItem = this;
           menu.expandedRoot = this.wrapper.rootWrapper;
           menu.selectedItemKey = this.key;
-          menuProps.compact && this.wrapper.rootWrapper.item.expand();
+          menuProps.compact && this.wrapper.rootWrapper.item.partSelect();
           this._callHandler(onSelect);
         },
         onUnselect: () => {
@@ -19529,12 +19633,25 @@ function _defineProperty2(obj, key, value) {
     handleSelect() {}
     _collapse() {
       this.indicator && this.indicator.collapse();
+      this.wrapper && this.wrapper.collapse();
       if (this.menu.props.itemExpandable.expandSingle === true) {
         this.wrapper.parent.expandedChildItem = null;
       }
     }
+    partSelect() {
+      const siblings = this.menu.element.querySelectorAll(
+        ".nom-menu-item-submenu-selected"
+      );
+      if (siblings.length) {
+        siblings.forEach((n) => {
+          n.classList.remove("nom-menu-item-submenu-selected");
+        });
+      }
+      this.element.classList.add("nom-menu-item-submenu-selected");
+    }
     _expand() {
       this.indicator && this.indicator.expand();
+      this.wrapper && this.wrapper.expand();
       if (this.menu.props.itemExpandable.expandSingle === true) {
         if (this.wrapper.parent.expandedChildItem) {
           this.wrapper.parent.expandedChildItem.collapse();
@@ -19764,7 +19881,7 @@ function _defineProperty2(obj, key, value) {
           console.warn(`Could not find the item with specific key.`);
           return;
         }
-        this.getItem(target).expand();
+        this.getItem(target).partSelect();
         this.scrollTo(target);
         this.expandedRoot = this.getItem(target).wrapper;
         this.selectedItemKey = param;
@@ -21452,7 +21569,9 @@ function _defineProperty2(obj, key, value) {
             triggerAction: "click",
             onShow: () => {
               if (!that.getValue()) {
-                that.yearPicker.scrollTo(new Date().format("yyyy"));
+                setTimeout(() => {
+                  that.yearPicker.scrollTo(new Date().format("yyyy"));
+                }, 200);
               } else {
                 that.activeItem();
               }
@@ -21675,12 +21794,11 @@ function _defineProperty2(obj, key, value) {
         const day = that._getDoubleDigit(time.getDate());
         const yearday = { year, month, day };
         return yearday;
-      } // 计算一年中的每一周都是从几号到几号
-      // 第一周为1月1日到 本年的 第一个周日
+      } // *为了适配后端现有周计算逻辑，改为如下逻辑：本年1月1日如果不是周一，则第一周从上一年12月XX号开始；同样如果本年12月31日不是周日，则这一周不算入本年，而算作来年第一周。
+      // 计算一年中的每一周都是从几号到几号
+      // 第一周为本年的第一个周日往前推七天
       // 第二周为 本年的 第一个周一 往后推到周日
       // 以此类推 再往后推52周。。。
-      // 如果最后一周在12月31日之前，则本年有垮了54周，反之53周
-      // 12月31 日不论是周几，都算为本周的最后一天
       // 参数年份 ，函数返回一个数组，数组里的对象包含 这一周的开始日期和结束日期
       function whichWeek(year) {
         const d = new Date(parseInt(year, 10), 0, 1);
@@ -21690,7 +21808,7 @@ function _defineProperty2(obj, key, value) {
         const arr = [];
         const longnum = d.setDate(d.getDate());
         if (longnum > +new Date(parseInt(year, 10), 0, 1)) {
-          const obj = yearDay(+new Date(year, 0, 1) / 1000);
+          const obj = yearDay(longnum / 1000 - 86400 * 7);
           obj.last = yearDay(longnum / 1000 - 86400);
           arr.push(obj);
         }
@@ -21705,16 +21823,9 @@ function _defineProperty2(obj, key, value) {
           lastStr = long + 86400000 * 6;
           arr.push(obj);
         }
-        if (lastStr < +new Date(parseInt(year, 10) + 1, 0, 1)) {
-          const obj = yearDay(lastStr / 1000 + 86400);
-          obj.last = yearDay(
-            +new Date(parseInt(year, 10) + 1, 0, 1) / 1000 - 86400
-          );
-          arr.push(obj);
-        } else {
-          arr[arr.length - 1].last = yearDay(
-            +new Date(parseInt(year, 10) + 1, 0, 1) / 1000 - 86400
-          );
+        if (lastStr < +new Date(parseInt(year, 10) + 1, 0, 1));
+        else {
+          arr.pop(); // arr[arr.length - 1].last = yearDay(+new Date(parseInt(year, 10) + 1, 0, 1) / 1000 - 86400)
         }
         return arr;
       }
@@ -21758,7 +21869,14 @@ function _defineProperty2(obj, key, value) {
       this.quarter = null;
       this.month = null;
       this.week = null;
+      this._resetLists();
       this.setValue(null);
+    }
+    _resetLists() {
+      this.yearPicker && this.yearPicker.unselectAllItems();
+      this.monthPicker && this.monthPicker.unselectAllItems();
+      this.quarterPicker && this.quarterPicker.unselectAllItems();
+      this.weekPicker && this.weekPicker.unselectAllItems();
     }
     handleYearChange(key) {
       this.year = key;
@@ -25493,7 +25611,8 @@ function _defineProperty2(obj, key, value) {
                 onClick: function ({ event }) {
                   nomui.utils.isFunction(that.props.removable) &&
                     that.props.removable(that.props.key);
-                  that.props.onRemove &&
+                  that.hasOwnProperty("props") &&
+                    that.props.onRemove &&
                     that._callHandler(that.props.onRemove, {
                       key: that.props.key,
                     });
@@ -26708,12 +26827,57 @@ function _defineProperty2(obj, key, value) {
         treeCheckable,
         {
           checkedNodeKeys: currentValue,
-          onCheckChange: () => {
-            const checkedKeys = this.tree.getCheckedNodeKeys();
+          onCheckChange: ({ sender }) => {
+            let allValue = this._getValue() || [];
+            const parentNode = this._getParentNode(sender);
+            const childNodes = parentNode.getChildNodes();
+            if (!sender.isChecked()) {
+              const checkedChildNodes = this._getCheckedChildNodes(childNodes);
+              !parentNode.isChecked() && checkedChildNodes.push(parentNode.key);
+              const newAllValue = allValue.filter(
+                (item) => checkedChildNodes.indexOf(item) === -1
+              );
+              allValue = newAllValue;
+            }
+            const checkedKeys = this._removeDuplicates([
+              ...allValue,
+              ...this.tree.getCheckedNodeKeys(),
+            ]);
             this._setValue(checkedKeys);
           },
         }
       );
+    }
+    _removeDuplicates(arr) {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr.indexOf(arr[i]) !== i) {
+          arr.splice(i, 1);
+          i--;
+        }
+      }
+      return arr;
+    }
+    _getParentNode(node) {
+      if (node.parentNode) {
+        return this._getParentNode(node.parentNode);
+      } else {
+        return node;
+      }
+    }
+    _getCheckedChildNodes(nodes) {
+      const checkedNodes = [];
+      nodes.forEach((node) => {
+        if (!node.isChecked()) {
+          checkedNodes.push(node.key);
+        }
+        if (node.getChildNodes().length) {
+          Array.prototype.push.apply(
+            checkedNodes,
+            this._getCheckedChildNodes(node.getChildNodes())
+          );
+        }
+      });
+      return checkedNodes;
     }
     _setValue(value, options) {
       this.tempValue = value;
@@ -26724,6 +26888,13 @@ function _defineProperty2(obj, key, value) {
       }
       if (options.triggerChange) {
         this._onValueChange();
+      } else {
+        this.currentValue = this.tempValue;
+        if (this.placeholder) {
+          isNullish(this.currentValue)
+            ? this.placeholder.show()
+            : this.placeholder.hide();
+        }
       }
       this._content.update({ children: this._getContentBadges() }); // 多选: 每次setValue后更新选中状态
       if (this.props.multiple) {
@@ -26936,18 +27107,21 @@ function _defineProperty2(obj, key, value) {
         }
         if (Array.isArray(extraAction) && extraAction.length > 0) {
           extraAction.forEach(({ text, action }) => {
-            actions.push({
-              tag: "a",
-              children: text,
-              attrs: {
-                href: "javascript:void(0)",
-                onclick: (e) => {
-                  e.preventDefault();
-                  isFunction(action) &&
-                    action({ sender: that._uploader, file });
+            const children = isFunction(text) ? text(file) : text;
+            if (!isNullish(children)) {
+              actions.push({
+                tag: "a",
+                children,
+                attrs: {
+                  href: "javascript:void(0)",
+                  onclick: (e) => {
+                    e.preventDefault();
+                    isFunction(action) &&
+                      action({ sender: that._uploader, file });
+                  },
                 },
-              },
-            });
+              });
+            }
           });
         }
         this.setProps({

@@ -34,10 +34,11 @@
 | 参数 | 说明 | 类型 | 默认值 |
 | --- | --- | --- | --- |
 | columns | 表格列的配置描述，具体项见下表 | `array` | `[]` |
+| columnAlign | 所有列的默认文本对齐方式 | `left`\|`center`\|`right` | `left` |
 | data | 表格数据数组 | `array` | `[]` |
 | frozenHeader | 冻结表头（注意配置列宽, 见下面的`注意事项`） | `boolean` | `false` |
 | frozenLeftCols | 指定冻结左侧多少列 | `number` | - |
-| frozenLeftCols | 指定冻结左侧多少列 | `number` | - |
+| frozenRightCols | 指定冻结右侧多少列 | `number` | - |
 | allowFrozenCols | 是否允许用户手动固定列(有多级表头时无效) | `boolean` | `false` |
 | keyField | 表格行数据的主键字段 | `string` | `id` |
 | rowCheckable | 表格行是否可选择 | `object` \| `boolean` |  |
@@ -59,6 +60,7 @@
 | forceSort | 是否在排序清空时仍触发 onSort 回调 | `boolean` | `false` |
 | sortCacheable | 是否允许缓存排序条件，使用本功能，Grid 必须指定唯一标识`key` | `boolean` | `false` |
 | onFilter | 列头筛选触发回调 | `({params})=>{}` | - |
+| rowSelectable | 是否可选中行 | `false` | - |
 | sticky | 是否开启吸附式表头以及虚拟滚动条,需要指定有滚动条的父容器，设为 true 则指定 window 为滚动容器 | `boolean` \| `component`\| `()=>{}` | false |
 
 > `frozenLeftCols`和`frozenRightCols`: 若列头与内容不对齐或出现列重复，请指定固定列的宽度 width。
@@ -87,6 +89,7 @@
 | field | 行数据（对象）的字段名 | `string` | - |
 | title | 列头显示标题 | `string` | - |
 | width | 列宽度，单位 px | `boolean` | 120 |
+| align | 文本对齐方式 | `left`\|`center`\|`right` | `left` |
 | cellRender | 单元格渲染函数，返回组件配置 | `({cellData,cell,row,rowData,table})=>{}` | - |
 | autoWidth | 是否自适应宽度（最终列显示的宽度，由`Td`子元素计算得出。若`column.width`小于子元素宽度，Td 会被撑大，否则不操作） | `boolean` | `false` |
 | resizable | 是否允许拖动列宽 | `boolean` | `false` |
@@ -138,6 +141,14 @@
     ]
 }
 ```
+
+### rowSelectable
+
+表格行可勾选配置
+
+| 参数     | 说明       | 类型                  | 默认值 |
+| -------- | ---------- | --------------------- | ------ |
+| onSelect | 行选中回调 | `({row,rowData})=>{}` | -      |
 
 ### rowCheckable
 

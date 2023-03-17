@@ -86,13 +86,14 @@ class MenuItem extends Component {
         byClick: menuProps.itemSelectable.byClick,
       },
       expandable: {
-        byClick: !this.isLeaf && !menuProps.compact,
+        byClick: !menuProps.compact,
         target: function () {
           return this.wrapper.submenu
         },
       },
       attrs: {
         href: this.getItemUrl(this.props.url),
+        target: this.props.target,
         style: {
           paddingLeft:
             menuProps.direction === 'vertical' && !menuProps.compact
@@ -105,7 +106,7 @@ class MenuItem extends Component {
         menu.selectedItem = this
         menu.expandedRoot = this.wrapper.rootWrapper
         menu.selectedItemKey = this.key
-        menuProps.compact && this.wrapper.rootWrapper.item.expand()
+        menuProps.compact && this.wrapper.rootWrapper.item.partSelect()
         this._callHandler(onSelect)
       },
       onUnselect: () => {
@@ -159,13 +160,25 @@ class MenuItem extends Component {
 
   _collapse() {
     this.indicator && this.indicator.collapse()
+    this.wrapper && this.wrapper.collapse()
     if (this.menu.props.itemExpandable.expandSingle === true) {
       this.wrapper.parent.expandedChildItem = null
     }
   }
 
+  partSelect() {
+    const siblings = this.menu.element.querySelectorAll('.nom-menu-item-submenu-selected')
+    if (siblings.length) {
+      siblings.forEach((n) => {
+        n.classList.remove('nom-menu-item-submenu-selected')
+      })
+    }
+    this.element.classList.add('nom-menu-item-submenu-selected')
+  }
+
   _expand() {
     this.indicator && this.indicator.expand()
+    this.wrapper && this.wrapper.expand()
     if (this.menu.props.itemExpandable.expandSingle === true) {
       if (this.wrapper.parent.expandedChildItem) {
         this.wrapper.parent.expandedChildItem.collapse()
